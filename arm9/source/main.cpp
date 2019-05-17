@@ -22,6 +22,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "inifile.h"
+
 u16 loadedFrame[256*192];
 u16 convertedFrame[256*192];
 
@@ -92,11 +94,12 @@ int main(int argc, char **argv) {
 	printf ("\x1b[2;0H");
 	printf("Converting...              ");
 
+	CIniFile info( "/rvidFrames/info.ini" );
 	rvidHeader.formatString = 0x44495652;	// "RVID"
 	rvidHeader.ver = 1;
 	rvidHeader.frames = foundFrames;
-	rvidHeader.fps = 24;
-	rvidHeader.vRes = 192;
+	rvidHeader.fps = info.GetInt("RVID", "FPS", 24);
+	rvidHeader.vRes = info.GetInt("RVID", "V_RES", 192);
 
 	FILE* frameInput;
 	FILE* videoOutput = fopen("/new.rvid", "wb");
@@ -104,6 +107,14 @@ int main(int argc, char **argv) {
 	// Write header
 	memcpy(headerToFile, &rvidHeader, sizeof(rvidHeaderInfo));
 	fwrite(headerToFile, 1, 0x200, videoOutput);
+
+	int videoYpos = 0;
+	if (rvidHeader.vRes <= 190) {
+		// Adjust video positioning
+		for (int i = rvidHeader.vRes; i < 192; i += 2) {
+			videoYpos++;
+		}
+	}
 
 	for (int i = 0; i <= foundFrames; i++) {
 		snprintf(framePath, sizeof(framePath), "/rvidFrames/frame%i.bmp", i);
@@ -113,13 +124,13 @@ int main(int argc, char **argv) {
 			fseek(frameInput, 0xe, SEEK_SET);
 			u8 pixelStart = (u8)fgetc(frameInput) + 0xe;
 			fseek(frameInput, pixelStart, SEEK_SET);
-			fread(loadedFrame, 2, 0x18000, frameInput);
+			fread(loadedFrame, 2, 0x200*rvidHeader.vRes, frameInput);
 			u16* src = loadedFrame;
 
 			// Convert frame
 			int x = 0;
-			int y = 191;
-			for (int i=0; i<256*192; i++) {
+			int y = rvidHeader.vRes-1;
+			for (int i=0; i<256*rvidHeader.vRes; i++) {
 				if (x >= 256) {
 					x = 0;
 					y--;
@@ -130,13 +141,13 @@ int main(int argc, char **argv) {
 			}
 
 			// Display converted frame
-			dmaCopy(convertedFrame, BG_GFX_SUB, 0x18000);
+			dmaCopy(convertedFrame, (u16*)BG_GFX_SUB+(256*videoYpos), 0x200*rvidHeader.vRes);
 
 			printf ("\x1b[4;0H");
 			printf("%i/%i\n", i, foundFrames);
 
 			// Save current frame to a file
-			fwrite(convertedFrame, 1, 0x18000, videoOutput);
+			fwrite(convertedFrame, 1, 0x200*rvidHeader.vRes, videoOutput);
 
 			fclose(frameInput);
 		} else {
