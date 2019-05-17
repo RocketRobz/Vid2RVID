@@ -1,0 +1,5 @@
+0x0: "RVID" string
+0x4: (u32) File format version
+0x8: (u32) Number of frames
+0xC: (u8) Frames per second (FPS)
+0xD: (u8) Vertical resolution
