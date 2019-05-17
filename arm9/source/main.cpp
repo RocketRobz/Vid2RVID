@@ -25,6 +25,18 @@
 u16 loadedFrame[256*192];
 u16 convertedFrame[256*192];
 
+u8 headerToFile[0x200] = {0};
+
+typedef struct rvidHeaderInfo {
+	u32 formatString;	// "RVID" string
+	u32 ver;			// File format version
+	u32 frames;			// Number of frames
+	u8 fps;				// Frames per second
+	u8 vRes;			// Vertical resolution
+} rvidHeaderInfo;
+
+rvidHeaderInfo rvidHeader;
+
 #define titleText "Vid2RVID, by RocketRobz\n"
 
 int main(int argc, char **argv) {
@@ -55,7 +67,7 @@ int main(int argc, char **argv) {
 
 	printf(titleText);
 	printf("\n");
-	printf("A: Convert\n");
+	printf("A: Convert");
 
 	do
 	{
@@ -65,21 +77,36 @@ int main(int argc, char **argv) {
 	}
 	while (!(pressed & KEY_A));
 
-	consoleClear();
-	printf(titleText);
-	printf("\n");
-	printf("Converting...\n");
+	printf ("\x1b[2;0H");
+	printf("Getting number of frames...");
 
 	char framePath[256];
 	int foundFrames = -1;
-	FILE* frameInput;
-	FILE* videoOutput = fopen("/new.rvid", "wb");
 
 	while (1) {
 		foundFrames++;
 		snprintf(framePath, sizeof(framePath), "/rvidFrames/frame%i.bmp", foundFrames);
 		if (access(framePath, F_OK) != 0) break;
+	}
 
+	printf ("\x1b[2;0H");
+	printf("Converting...              ");
+
+	rvidHeader.formatString = 0x44495652;	// "RVID"
+	rvidHeader.ver = 1;
+	rvidHeader.frames = foundFrames;
+	rvidHeader.fps = 24;
+	rvidHeader.vRes = 192;
+
+	FILE* frameInput;
+	FILE* videoOutput = fopen("/new.rvid", "wb");
+	
+	// Write header
+	memcpy(headerToFile, &rvidHeader, sizeof(rvidHeaderInfo));
+	fwrite(headerToFile, 1, 0x200, videoOutput);
+
+	for (int i = 0; i <= foundFrames; i++) {
+		snprintf(framePath, sizeof(framePath), "/rvidFrames/frame%i.bmp", i);
 		frameInput = fopen(framePath, "rb");
 		if (frameInput) {
 			// Load frame
@@ -104,6 +131,9 @@ int main(int argc, char **argv) {
 
 			// Display converted frame
 			dmaCopy(convertedFrame, BG_GFX_SUB, 0x18000);
+
+			printf ("\x1b[4;0H");
+			printf("%i/%i\n", i, foundFrames);
 
 			// Save current frame to a file
 			fwrite(convertedFrame, 1, 0x18000, videoOutput);
