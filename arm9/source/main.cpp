@@ -82,19 +82,22 @@ int main(int argc, char **argv) {
 	printf ("\x1b[2;0H");
 	printf("Getting number of frames...");
 
-	char framePath[256];
-	int foundFrames = -1;
+	CIniFile info( "/rvidFrames/info.ini" );
 
-	while (1) {
-		foundFrames++;
-		snprintf(framePath, sizeof(framePath), "/rvidFrames/frame%i.bmp", foundFrames);
-		if (access(framePath, F_OK) != 0) break;
+	char framePath[256];
+	int foundFrames = info.GetInt("RVID", "FRAMES", -1);
+
+	if (foundFrames == -1) {
+		while (1) {
+			foundFrames++;
+			snprintf(framePath, sizeof(framePath), "/rvidFrames/frame%i.bmp", foundFrames);
+			if (access(framePath, F_OK) != 0) break;
+		}
 	}
 
 	printf ("\x1b[2;0H");
 	printf("Converting...              ");
 
-	CIniFile info( "/rvidFrames/info.ini" );
 	rvidHeader.formatString = 0x44495652;	// "RVID"
 	rvidHeader.ver = 1;
 	rvidHeader.frames = foundFrames;
