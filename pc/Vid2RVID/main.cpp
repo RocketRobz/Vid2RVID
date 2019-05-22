@@ -71,28 +71,6 @@ int main(int argc, char **argv) {
 
 	while (!(GetKeyState('A') & 0x8000));
 
-	clear_screen();
-	printf("Getting number of frames...\n");
-
-	CIniFile info( "rvidFrames/info.ini" );
-
-	char framePath[256];
-	int foundFrames = info.GetInt("RVID", "FRAMES", -1);
-
-	if (foundFrames == -1) {
-		while (1) {
-			foundFrames++;
-			snprintf(framePath, sizeof(framePath), "rvidFrames/frame%i.png", foundFrames);
-			if (access(framePath, F_OK) != 0) break;
-		}
-	}
-
-	rvidHeader.formatString = 0x44495652;	// "RVID"
-	rvidHeader.ver = 1;
-	rvidHeader.frames = foundFrames+1;
-	rvidHeader.fps = info.GetInt("RVID", "FPS", 24);
-	rvidHeader.vRes = info.GetInt("RVID", "V_RES", 192);
-
     if (access("rvidFrames/sound.raw.pcm", F_OK) == 0) {
         clear_screen();
         printf("Sound file found!\n");
@@ -125,6 +103,28 @@ int main(int argc, char **argv) {
             }
         }
     }
+
+	clear_screen();
+	printf("Getting number of frames...\n");
+
+	CIniFile info( "rvidFrames/info.ini" );
+
+	char framePath[256];
+	int foundFrames = info.GetInt("RVID", "FRAMES", -1);
+
+	if (foundFrames == -1) {
+		while (1) {
+			foundFrames++;
+			snprintf(framePath, sizeof(framePath), "rvidFrames/frame%i.png", foundFrames);
+			if (access(framePath, F_OK) != 0) break;
+		}
+	}
+
+	rvidHeader.formatString = 0x44495652;	// "RVID"
+	rvidHeader.ver = 1;
+	rvidHeader.frames = foundFrames+1;
+	rvidHeader.fps = info.GetInt("RVID", "FPS", 24);
+	rvidHeader.vRes = info.GetInt("RVID", "V_RES", 192);
 
 	clear_screen();
 	printf("Converting...\n");
