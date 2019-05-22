@@ -134,7 +134,7 @@ int main(int argc, char **argv) {
 	if (foundFrames == -1) {
 		while (1) {
 			foundFrames++;
-			snprintf(framePath, sizeof(framePath), "/rvidFrames/frame%i.bmp", foundFrames);
+			snprintf(framePath, sizeof(framePath), "/rvidFrames/frame%i.png", foundFrames);
 			if (access(framePath, F_OK) != 0) break;
 		}
 	}
