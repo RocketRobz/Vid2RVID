@@ -16,7 +16,7 @@ include $(DEVKITARM)/ds_rules
 #---------------------------------------------------------------------------------
 BUILD		:=	build
 IMAGES		:=	graphics
-SOURCES		:=	source $(IMG_DATA)
+SOURCES		:=	source source/graphics
 INCLUDES	:=	include
 DATA		:=	data
 MUSIC       :=  music

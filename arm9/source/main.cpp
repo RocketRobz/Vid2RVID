@@ -22,9 +22,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "graphics/lodepng.h"
 #include "inifile.h"
 
-u16 loadedFrame[256*192];
 u16 convertedFrame[256*192];
 
 u8 headerToFile[0x200] = {0};
@@ -40,6 +40,47 @@ typedef struct rvidHeaderInfo {
 rvidHeaderInfo rvidHeader;
 
 #define titleText "Vid2RVID, by RocketRobz\n"
+
+int hourMark = 0;
+int minuteMark = 0;
+int secondMark = 0;
+int frameMark = 0;
+
+void vBlankHandler(void) {
+	if (frameMark == 60) {
+		frameMark = 0;
+		secondMark++;
+		if (secondMark == 60) {
+			secondMark = 0;
+			minuteMark++;
+			if (minuteMark == 60) {
+				minuteMark = 0;
+				hourMark++;
+			}
+		}
+	}
+	frameMark++;
+
+	printf("\x1b[10;0H");
+	printf("Time elapsed: ");
+	if (hourMark < 10) {
+		printf("0%i", hourMark);
+	} else {
+		printf("%i", hourMark);
+	}
+	printf(":");
+	if (minuteMark < 10) {
+		printf("0%i", minuteMark);
+	} else {
+		printf("%i", minuteMark);
+	}
+	printf(":");
+	if (secondMark < 10) {
+		printf("0%i", secondMark);
+	} else {
+		printf("%i", secondMark);
+	}
+}
 
 int main(int argc, char **argv) {
 
@@ -78,6 +119,9 @@ int main(int argc, char **argv) {
 		swiWaitForVBlank();
 	}
 	while (!(pressed & KEY_A));
+
+	irqSet(IRQ_VBLANK, vBlankHandler);
+	irqEnable(IRQ_VBLANK);
 
 	printf ("\x1b[2;0H");
 	printf("Getting number of frames...");
@@ -120,39 +164,27 @@ int main(int argc, char **argv) {
 	}
 
 	for (int i = 0; i <= foundFrames; i++) {
-		snprintf(framePath, sizeof(framePath), "/rvidFrames/frame%i.bmp", i);
+		snprintf(framePath, sizeof(framePath), "/rvidFrames/frame%i.png", i);
 		frameInput = fopen(framePath, "rb");
 		if (frameInput) {
-			// Load frame
-			fseek(frameInput, 0xe, SEEK_SET);
-			u8 pixelStart = (u8)fgetc(frameInput) + 0xe;
-			fseek(frameInput, pixelStart, SEEK_SET);
-			fread(loadedFrame, 2, 0x200*rvidHeader.vRes, frameInput);
-			u16* src = loadedFrame;
+			fclose(frameInput);
 
-			// Convert frame
-			int x = 0;
-			int y = rvidHeader.vRes-1;
-			for (int i=0; i<256*rvidHeader.vRes; i++) {
-				if (x >= 256) {
-					x = 0;
-					y--;
-				}
-				u16 val = *(src++);
-				convertedFrame[y*256+x] = ((val>>10)&31) | (val&31<<5) | (val&31)<<10 | BIT(15);
-				x++;
+			std::vector<unsigned char> image;
+			unsigned width, height;
+			lodepng::decode(image, width, height, framePath);
+
+			for(unsigned i=0;i<image.size()/4;i++) {
+				convertedFrame[i] = image[i*4]>>3 | (image[(i*4)+1]>>3)<<5 | (image[(i*4)+2]>>3)<<10 | BIT(15);
 			}
 
 			// Display converted frame
-			dmaCopy(convertedFrame, (u16*)BG_GFX_SUB+(256*videoYpos), 0x200*rvidHeader.vRes);
+			dmaCopyAsynch(convertedFrame, (u16*)BG_GFX_SUB+(256*videoYpos), 0x200*rvidHeader.vRes);
 
 			printf ("\x1b[4;0H");
 			printf("%i/%i\n", i, foundFrames);
 
 			// Save current frame to a file
 			fwrite(convertedFrame, 1, 0x200*rvidHeader.vRes, videoOutput);
-
-			fclose(frameInput);
 		} else {
 			break;
 		}
@@ -160,10 +192,12 @@ int main(int argc, char **argv) {
 
 	fclose(videoOutput);
 
-	consoleClear();
-	printf(titleText);
-	printf("\n");
-	printf("Done!\n");
+	irqDisable(IRQ_VBLANK);
+
+	printf ("\x1b[2;0H");
+	printf("Done!                      ");
+	printf ("\x1b[4;0H");
+	printf("                           ");
 
 	//for (int i = 0; i < 60*3; i++) {
 	while (1) {
