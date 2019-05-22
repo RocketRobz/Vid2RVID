@@ -1,0 +1,41 @@
+# depslib dependency file v1.0
+1558505168 source:d:\disassemblies\nds\vid2rvid\pc\vid2rvid\inifile.cpp
+	<cstdio>
+	<cstdlib>
+	<string>
+	"inifile.h"
+
+1499745446 d:\disassemblies\nds\vid2rvid\pc\vid2rvid\inifile.h
+	<string>
+	<vector>
+	<map>
+
+1558504198 source:d:\disassemblies\nds\vid2rvid\pc\vid2rvid\main.cpp
+	<stdio.h>
+	<stdlib.h>
+	<math.h>
+	<time.h>
+	<ctype.h>
+	<sys/stat.h>
+	<sys/types.h>
+	<unistd.h>
+	<stdint.h>
+	<string.h>
+	<Windows.h>
+	"graphics/lodepng.h"
+	"inifile.h"
+
+1558493058 d:\disassemblies\nds\vid2rvid\pc\vid2rvid\graphics\lodepng.h
+	<string.h>
+	<vector>
+	<string>
+	"lodepng.h"
+	<iostream>
+	"lodepng.h"
+
+1558497315 source:d:\disassemblies\nds\vid2rvid\pc\vid2rvid\graphics\lodepng.cpp
+	"lodepng.h"
+	<limits.h>
+	<stdio.h>
+	<stdlib.h>
+

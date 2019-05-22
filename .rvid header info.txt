@@ -3,3 +3,6 @@
 0x8: (u32) Number of frames
 0xC: (u8) Frames per second (FPS)
 0xD: (u8) Vertical resolution
+0xE: (u8) Has audio
+0xF: (u8) Reserved
+0x10: (u16) Audio sample rate
