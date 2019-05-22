@@ -16,16 +16,47 @@
 template<class TYPE> inline TYPE BIT(const TYPE & x)
 { return TYPE(1) << x; }
 
+void clear_screen(char fill = ' ') {
+    COORD tl = {0,0};
+    CONSOLE_SCREEN_BUFFER_INFO s;
+    HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
+    GetConsoleScreenBufferInfo(console, &s);
+    DWORD written, cells = s.dwSize.X * s.dwSize.Y;
+    FillConsoleOutputCharacter(console, fill, cells, tl, &written);
+    FillConsoleOutputAttribute(console, s.wAttributes, cells, tl, &written);
+    SetConsoleCursorPosition(console, tl);
+}
+
 uint16_t convertedFrame[256*192];
+
+char soundBuffer[0x100000] = {0};
+uint32_t soundSize = 0;
 
 uint8_t headerToFile[0x200] = {0};
 
+off_t getFileSize(const char *fileName)
+{
+    FILE* fp = fopen(fileName, "rb");
+    off_t fsize = 0;
+    if (fp) {
+        fseek(fp, 0, SEEK_END);
+        fsize = ftell(fp);			// Get source file's size
+		fseek(fp, 0, SEEK_SET);
+	}
+	fclose(fp);
+
+	return fsize;
+}
+
 typedef struct rvidHeaderInfo {
-	uint32_t formatString;	// "RVID" string
-	uint32_t ver;			// File format version
+	uint32_t formatString;  	// "RVID" string
+	uint32_t ver;			    // File format version
 	uint32_t frames;			// Number of frames
 	uint8_t fps;				// Frames per second
-	uint8_t vRes;			// Vertical resolution
+	uint8_t vRes;			    // Vertical resolution
+	uint8_t hasSound;			// Has sound/audio
+	uint8_t reserved;
+	uint16_t sampleRate;		// Audio sample rate
 } rvidHeaderInfo;
 
 rvidHeaderInfo rvidHeader;
@@ -40,6 +71,7 @@ int main(int argc, char **argv) {
 
 	while (!(GetKeyState('A') & 0x8000));
 
+	clear_screen();
 	printf("Getting number of frames...\n");
 
 	CIniFile info( "rvidFrames/info.ini" );
@@ -55,13 +87,47 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	printf("Converting...\n");
-
 	rvidHeader.formatString = 0x44495652;	// "RVID"
 	rvidHeader.ver = 1;
 	rvidHeader.frames = foundFrames+1;
 	rvidHeader.fps = info.GetInt("RVID", "FPS", 24);
 	rvidHeader.vRes = info.GetInt("RVID", "V_RES", 192);
+
+    if (access("rvidFrames/sound.raw.pcm", F_OK) == 0) {
+        clear_screen();
+        printf("Sound file found!\n");
+        printf("\n");
+        printf("What is the sample rate?\n");
+        printf("0: Exclude sound\n");
+        printf("1: 8000hz\n");
+        printf("2: 11025hz\n");
+        printf("3: 16000hz\n");
+
+        while (1) {
+            if (GetKeyState('0') & 0x8000) {
+                rvidHeader.hasSound = 0;
+                break;
+            }
+            if (GetKeyState('1') & 0x8000) {
+                rvidHeader.sampleRate = 8000;
+                rvidHeader.hasSound = 1;
+                break;
+            }
+            if (GetKeyState('2') & 0x8000) {
+                rvidHeader.sampleRate = 11025;
+                rvidHeader.hasSound = 1;
+                break;
+            }
+            if (GetKeyState('3') & 0x8000) {
+                rvidHeader.sampleRate = 16000;
+                rvidHeader.hasSound = 1;
+                break;
+            }
+        }
+    }
+
+	clear_screen();
+	printf("Converting...\n");
 
 	FILE* frameInput;
 	FILE* videoOutput = fopen("new.rvid", "wb");
@@ -101,8 +167,32 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	fclose(videoOutput);
+	if (rvidHeader.hasSound == 1) {
+        clear_screen();
+        printf("Adding sound...\n");
 
+        off_t fsize = getFileSize("rvidFrames/sound.raw.pcm");
+        off_t offset = 0;
+        int numr;
+
+        FILE* soundFile = fopen("rvidFrames/sound.raw.pcm", "rb");
+        while (1)
+        {
+            // Add sound to .rvid file
+            numr = fread(soundBuffer, 1, sizeof(soundBuffer), soundFile);
+            fwrite(soundBuffer, 1, numr, videoOutput);
+            offset += sizeof(soundBuffer);
+
+            if (offset > fsize) {
+                break;
+            }
+        }
+        fclose(soundFile);
+    }
+
+    fclose(videoOutput);
+
+    clear_screen();
 	printf("Done!\n");
 
 	return 0;
