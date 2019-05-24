@@ -54,8 +54,8 @@ typedef struct rvidHeaderInfo {
 	uint32_t frames;			// Number of frames
 	uint8_t fps;				// Frames per second
 	uint8_t vRes;			    // Vertical resolution
+	uint8_t interlaced;		    // Is interlaced
 	uint8_t hasSound;			// Has sound/audio
-	uint8_t reserved;
 	uint16_t sampleRate;		// Audio sample rate
 } rvidHeaderInfo;
 
@@ -121,10 +121,11 @@ int main(int argc, char **argv) {
 	}
 
 	rvidHeader.formatString = 0x44495652;	// "RVID"
-	rvidHeader.ver = 1;
+	rvidHeader.ver = 2;
 	rvidHeader.frames = foundFrames+1;
 	rvidHeader.fps = info.GetInt("RVID", "FPS", 24);
 	rvidHeader.vRes = info.GetInt("RVID", "V_RES", 192);
+	rvidHeader.interlaced = info.GetInt("RVID", "INTERLACED", 0);
 
 	clear_screen();
 	printf("Converting...\n");
