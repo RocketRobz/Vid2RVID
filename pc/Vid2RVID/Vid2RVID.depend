@@ -10,7 +10,7 @@
 	<vector>
 	<map>
 
-1558504198 source:d:\disassemblies\nds\vid2rvid\pc\vid2rvid\main.cpp
+1559004265 source:d:\disassemblies\nds\vid2rvid\pc\vid2rvid\main.cpp
 	<stdio.h>
 	<stdlib.h>
 	<math.h>
@@ -23,6 +23,7 @@
 	<string.h>
 	<Windows.h>
 	"graphics/lodepng.h"
+	"lz77.h"
 	"inifile.h"
 
 1558493058 d:\disassemblies\nds\vid2rvid\pc\vid2rvid\graphics\lodepng.h
@@ -38,4 +39,28 @@
 	<limits.h>
 	<stdio.h>
 	<stdlib.h>
+
+1559004337 source:d:\disassemblies\nds\vid2rvid\pc\vid2rvid\lz77.c
+	<stdio.h>
+	<stdlib.h>
+	<math.h>
+	<time.h>
+	<ctype.h>
+	<sys/stat.h>
+	<sys/types.h>
+	<unistd.h>
+	<stdint.h>
+	<string.h>
+
+1559004322 d:\disassemblies\nds\vid2rvid\pc\vid2rvid\lz77.h
+	<stdio.h>
+	<stdlib.h>
+	<math.h>
+	<time.h>
+	<ctype.h>
+	<sys/stat.h>
+	<sys/types.h>
+	<unistd.h>
+	<stdint.h>
+	<string.h>
 
