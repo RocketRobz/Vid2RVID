@@ -10,7 +10,7 @@
 	<vector>
 	<map>
 
-1559004265 source:d:\disassemblies\nds\vid2rvid\pc\vid2rvid\main.cpp
+1559006651 source:d:\disassemblies\nds\vid2rvid\pc\vid2rvid\main.cpp
 	<stdio.h>
 	<stdlib.h>
 	<math.h>
@@ -52,7 +52,19 @@
 	<stdint.h>
 	<string.h>
 
-1559004322 d:\disassemblies\nds\vid2rvid\pc\vid2rvid\lz77.h
+1559005622 d:\disassemblies\nds\vid2rvid\pc\vid2rvid\lz77.h
+	<stdio.h>
+	<stdlib.h>
+	<math.h>
+	<time.h>
+	<ctype.h>
+	<sys/stat.h>
+	<sys/types.h>
+	<unistd.h>
+	<stdint.h>
+	<string.h>
+
+1559006288 source:d:\disassemblies\nds\vid2rvid\pc\vid2rvid\lz77.cpp
 	<stdio.h>
 	<stdlib.h>
 	<math.h>

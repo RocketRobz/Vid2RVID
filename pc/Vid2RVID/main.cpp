@@ -29,6 +29,7 @@ void clear_screen(char fill = ' ') {
 }
 
 uint16_t convertedFrame[256*192];
+unsigned char* compressedFrame;
 
 char fileBuffer[0x100000] = {0};
 uint32_t compressedFrameSizeTableSize = 0;
@@ -198,7 +199,7 @@ int main(int argc, char **argv) {
                     convertedFrame[i] = image[i*4]>>3 | (image[(i*4)+1]>>3)<<5 | (image[(i*4)+2]>>3)<<10 | BIT(15);
                 }
 
-                const char* compressedFrame = lzssCompress((const char*)convertedFrame);
+                compressedFrame = lzssCompress((unsigned char*)convertedFrame);
 
                 printf("%i/%i\n", i, foundFrames);
 

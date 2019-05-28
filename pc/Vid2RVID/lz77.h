@@ -12,16 +12,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-
-const char* lzssCompress(const char* Data);
-
-#ifdef __cplusplus
-}
-#endif
+unsigned char *lzssCompress(unsigned char *Data);
 
 #endif // LZSS_H_
 
