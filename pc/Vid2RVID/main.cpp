@@ -70,13 +70,48 @@ rvidHeaderInfo rvidHeader;
 
 #define titleText "Vid2RVID, by RocketRobz\n"
 
+void extractFrames(void) {
+    clear_screen();
+    printf("Extracting frames...\n");
+
+    mkdir("rvidFrames_extracted");
+	FILE* videoInput = fopen("source.rvid", "rb");
+    chdir("rvidFrames_extracted");
+	FILE* frameOutput;
+	char frameOutputFileName[32];
+	fread(&rvidHeader, 1, sizeof(rvidHeaderInfo), videoInput);
+	fseek(videoInput, 0x200, SEEK_SET);
+	for (int i = 0; i < rvidHeader.frames; i++) {
+        if (fread(convertedFrame, 1, 0x200*rvidHeader.vRes, videoInput) > 0) {
+            snprintf(frameOutputFileName, sizeof(frameOutputFileName), "frame%i.bin", i);
+            frameOutput = fopen(frameOutputFileName, "wb");
+            fwrite(convertedFrame, 1, 0x200*rvidHeader.vRes, frameOutput);
+            fclose(frameOutput);
+        } else {
+            break;
+        }
+	}
+	fclose(videoInput);
+	printf("Done!\n");
+}
+
 int main(int argc, char **argv) {
 
 	printf(titleText);
 	printf("\n");
 	printf("A: Convert\n");
+	printf("E: Extract raw frames from source.rvid\n");
 
-	while (!(GetKeyState('A') & 0x8000));
+    while (1) {
+        if (GetKeyState('A') & 0x8000) {
+            break;
+        }
+        if (GetKeyState('E') & 0x8000) {
+            extractFrames();
+            return 0;
+            break;
+        }
+    }
 
     if (access("rvidFrames/sound.raw.pcm", F_OK) == 0) {
         clear_screen();
