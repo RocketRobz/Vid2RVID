@@ -64,7 +64,7 @@
 	<stdint.h>
 	<string.h>
 
-1559006288 source:d:\disassemblies\nds\vid2rvid\pc\vid2rvid\lz77.cpp
+1559007484 source:d:\disassemblies\nds\vid2rvid\pc\vid2rvid\lz77.cpp
 	<stdio.h>
 	<stdlib.h>
 	<math.h>
@@ -75,4 +75,8 @@
 	<unistd.h>
 	<stdint.h>
 	<string.h>
+	"tonccpy.h"
+
+1559007798 d:\disassemblies\nds\vid2rvid\pc\vid2rvid\tonccpy.h
+	<stdint.h>
 

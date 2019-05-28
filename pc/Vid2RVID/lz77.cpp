@@ -8,6 +8,7 @@
 #include <unistd.h>                       //probably don't need most of these :p
 #include <stdint.h>
 #include <string.h>
+#include "tonccpy.h"
 
 unsigned char *lzssCompress(unsigned char *Data)
 {
@@ -89,6 +90,6 @@ unsigned char *lzssCompress(unsigned char *Data)
 			}
 			while ((dstoffs % 4) != 0) dstoffs++;
 			unsigned char* realresult = new unsigned char[dstoffs];
-			memcpy(realresult, result, dstoffs);
+			tonccpy(realresult, result, dstoffs);
 			return realresult;
 }
