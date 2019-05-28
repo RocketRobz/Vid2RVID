@@ -12,7 +12,9 @@
 #include <stdint.h>
 #include <string.h>
 
-unsigned char *lzssCompress(unsigned char *Data);
+extern int compressedDataSize;
+
+unsigned char *lzssCompress(unsigned char *Data, int dataSize);
 
 #endif // LZSS_H_
 

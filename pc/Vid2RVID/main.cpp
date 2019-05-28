@@ -193,6 +193,7 @@ int main(int argc, char **argv) {
 	printf("Compress the video frames?\n");
 	printf("Video quality will not be affected.\n");
 	printf("Recommended if your video is 24FPS or less.\n");
+	printf("Depending on how may frames you have, this may take a while.\n");
     printf("\n");
     printf("Y: Yes\n");
     printf("N: No\n");
@@ -234,15 +235,15 @@ int main(int argc, char **argv) {
                     convertedFrame[i] = image[i*4]>>3 | (image[(i*4)+1]>>3)<<5 | (image[(i*4)+2]>>3)<<10 | BIT(15);
                 }
 
-                compressedFrame = lzssCompress((unsigned char*)convertedFrame);
+                compressedFrame = lzssCompress((unsigned char*)convertedFrame, 0x200*rvidHeader.vRes);
 
                 printf("%i/%i\n", i, foundFrames);
 
                 // Save current frame to temp file
-                fwrite(compressedFrame, 1, sizeof(compressedFrame), compressedFrames);
-                fwrite((void*)sizeof(compressedFrame), 4, 1, compressedFrameSizeTable);
+                fwrite(compressedFrame, 1, compressedDataSize, compressedFrames);
+                fwrite(&compressedDataSize, 4, 1, compressedFrameSizeTable);
                 compressedFrameSizeTableSize += 4;
-                compressedFramesSize += sizeof(compressedFrame);
+                compressedFramesSize += compressedDataSize;
             } else {
                 break;
             }

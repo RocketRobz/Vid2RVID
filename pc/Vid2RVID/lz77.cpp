@@ -10,17 +10,19 @@
 #include <string.h>
 #include "tonccpy.h"
 
-unsigned char *lzssCompress(unsigned char *Data)
+int compressedDataSize = 0;
+
+unsigned char *lzssCompress(unsigned char *Data, int dataSize)
 {
 			unsigned char* dataptr = Data;
 
-			unsigned char* result = new unsigned char[sizeof(Data) + sizeof(Data) / 8 + 4];
+			unsigned char* result = new unsigned char[dataSize + dataSize / 8 + 4];
 			unsigned char* resultptr = result;
 			*resultptr++ = 0x10;
-			*resultptr++ = (unsigned char)(sizeof(Data) & 0xFF);
-			*resultptr++ = (unsigned char)((sizeof(Data) >> 8) & 0xFF);
-			*resultptr++ = (unsigned char)((sizeof(Data) >> 16) & 0xFF);
-			int length = sizeof(Data);
+			*resultptr++ = (unsigned char)(dataSize & 0xFF);
+			*resultptr++ = (unsigned char)((dataSize >> 8) & 0xFF);
+			*resultptr++ = (unsigned char)((dataSize >> 16) & 0xFF);
+			int length = dataSize;
 			int dstoffs = 4;
 			int Offs = 0;
 			while (1)
@@ -89,6 +91,7 @@ unsigned char *lzssCompress(unsigned char *Data)
 				if (Offs >= length) break;
 			}
 			while ((dstoffs % 4) != 0) dstoffs++;
+			compressedDataSize = dstoffs;
 			unsigned char* realresult = new unsigned char[dstoffs];
 			tonccpy(realresult, result, dstoffs);
 			return realresult;
