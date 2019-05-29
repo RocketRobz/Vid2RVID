@@ -55,6 +55,9 @@ typedef struct rvidHeaderInfo {
 	u8 interlaced;		// Is interlaced
 	u8 hasSound;			// Has sound/audio
 	u16 sampleRate;		// Audio sample rate
+	u16 framesCompressed;	    // Frames are compressed
+	u32 framesOffset;		    // Offset of first frame
+	u32 soundOffset;		    // Offset of sound stream
 } rvidHeaderInfo;
 
 rvidHeaderInfo rvidHeader;
@@ -224,7 +227,52 @@ int main(int argc, char **argv) {
 	rvidHeader.frames = foundFrames;
 	rvidHeader.fps = info.GetInt("RVID", "FPS", 24);
 	rvidHeader.vRes = info.GetInt("RVID", "V_RES", 192);
-	rvidHeader.interlaced = info.GetInt("RVID", "INTERLACED", 0);
+	rvidHeader.interlaced = info.GetInt("RVID", "INTERLACED", 2);
+	rvidHeader.framesCompressed = 0;
+	rvidHeader.framesOffset = 0x200;
+	rvidHeader.soundOffset = 0x200+((0x200*rvidHeader.vRes)*rvidHeader.frames);
+
+	if (rvidHeader.interlaced == 2) {
+		int cursorPosition = 1;
+		printf ("\x1b[2;0H");
+        printf("Is the video interlaced?\n");
+        printf("Video will be played twice the\n"
+				"set frame rate, if so.\n");
+        printf("\n");
+        printf("  Yes\n");
+        printf("> No\n");
+
+        while (1) {
+			scanKeys();
+			pressed = keysDown();
+			if (pressed & KEY_A) {
+				break;
+			}
+			if (pressed & KEY_UP) {
+				printf("\x1b[%i;0H", cursorPosition+6);
+				printf(" ");
+				cursorPosition--;
+				if (cursorPosition < 0) cursorPosition = 1;
+				printf("\x1b[%i;0H", cursorPosition+6);
+				printf(">");
+			}
+			if (pressed & KEY_DOWN) {
+				printf("\x1b[%i;0H", cursorPosition+6);
+				printf(" ");
+				cursorPosition++;
+				if (cursorPosition > 1) cursorPosition = 0;
+				printf("\x1b[%i;0H", cursorPosition+6);
+				printf(">");
+			}
+			swiWaitForVBlank();
+        }
+        if (cursorPosition == 0) {
+            rvidHeader.interlaced = 1;
+        }
+        if (cursorPosition == 1) {
+            rvidHeader.interlaced = 0;
+        }
+	}
 
 	printf ("\x1b[2;0H");
 	printf("Converting...              ");
