@@ -70,7 +70,7 @@ rvidHeaderInfo rvidHeader;
 
 #define titleText "Vid2RVID, by RocketRobz\n"
 
-void extractFrames(void) {
+/*void extractFrames(void) {
     clear_screen();
     printf("Extracting frames...\n");
 
@@ -93,24 +93,24 @@ void extractFrames(void) {
 	}
 	fclose(videoInput);
 	printf("Done!\n");
-}
+}*/
 
 int main(int argc, char **argv) {
 
 	printf(titleText);
 	printf("\n");
 	printf("A: Convert\n");
-	printf("E: Extract raw frames from source.rvid\n");
+	//printf("E: Extract raw frames from source.rvid\n");
 
     while (1) {
         if (GetKeyState('A') & 0x8000) {
             break;
         }
-        if (GetKeyState('E') & 0x8000) {
+        /*if (GetKeyState('E') & 0x8000) {
             extractFrames();
             return 0;
             break;
-        }
+        }*/
     }
 
     if (access("rvidFrames/sound.raw.pcm", F_OK) == 0) {
