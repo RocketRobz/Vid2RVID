@@ -68,7 +68,7 @@ typedef struct rvidHeaderInfo {
 
 rvidHeaderInfo rvidHeader;
 
-#define titleText "Vid2RVID, by RocketRobz\n"
+#define titleText "Vid2RVID v1.2\nby RocketRobz\n"
 
 /*void extractFrames(void) {
     clear_screen();
@@ -113,43 +113,48 @@ int main(int argc, char **argv) {
         }*/
     }
 
-    if (access("rvidFrames/sound.raw.pcm", F_OK) == 0) {
-        clear_screen();
-        printf("Sound file found!\n");
-        printf("\n");
-        printf("What is the sample rate?\n");
-        printf("0: Exclude sound\n");
-        printf("1: 8000hz\n");
-        printf("2: 11025hz\n");
-        printf("3: 16000hz\n");
+	CIniFile info( "rvidFrames/info.ini" );
 
-        while (1) {
-            if (GetKeyState('0') & 0x8000) {
-                rvidHeader.hasSound = 0;
-                break;
-            }
-            if (GetKeyState('1') & 0x8000) {
-                rvidHeader.sampleRate = 8000;
-                rvidHeader.hasSound = 1;
-                break;
-            }
-            if (GetKeyState('2') & 0x8000) {
-                rvidHeader.sampleRate = 11025;
-                rvidHeader.hasSound = 1;
-                break;
-            }
-            if (GetKeyState('3') & 0x8000) {
-                rvidHeader.sampleRate = 16000;
-                rvidHeader.hasSound = 1;
-                break;
+    if ((info.GetInt("RVID", "HAS_SOUND", 1) == 1) && (access("rvidFrames/sound.raw.pcm", F_OK) == 0)) {
+        rvidHeader.sampleRate = info.GetInt("RVID", "AUDIO_HZ", 0);
+        if (rvidHeader.sampleRate > 0) {
+            rvidHeader.hasSound = 1;
+        } else {
+            clear_screen();
+            printf("Sound file found!\n");
+            printf("\n");
+            printf("What is the sample rate?\n");
+            printf("0: Exclude sound\n");
+            printf("1: 8000hz\n");
+            printf("2: 11025hz\n");
+            printf("3: 16000hz\n");
+
+            while (1) {
+                if (GetKeyState('0') & 0x8000) {
+                    rvidHeader.hasSound = 0;
+                    break;
+                }
+                if (GetKeyState('1') & 0x8000) {
+                    rvidHeader.sampleRate = 8000;
+                    rvidHeader.hasSound = 1;
+                    break;
+                }
+                if (GetKeyState('2') & 0x8000) {
+                    rvidHeader.sampleRate = 11025;
+                    rvidHeader.hasSound = 1;
+                    break;
+                }
+                if (GetKeyState('3') & 0x8000) {
+                    rvidHeader.sampleRate = 16000;
+                    rvidHeader.hasSound = 1;
+                    break;
+                }
             }
         }
     }
 
 	clear_screen();
 	printf("Getting number of frames...\n");
-
-	CIniFile info( "rvidFrames/info.ini" );
 
 	char framePath[256];
 	int foundFrames = info.GetInt("RVID", "FRAMES", -1);
@@ -160,6 +165,7 @@ int main(int argc, char **argv) {
 			snprintf(framePath, sizeof(framePath), "rvidFrames/frame%i.png", foundFrames);
 			if (access(framePath, F_OK) != 0) break;
 		}
+        foundFrames--;
 	}
 
 	rvidHeader.formatString = 0x44495652;	// "RVID"
@@ -168,6 +174,7 @@ int main(int argc, char **argv) {
 	rvidHeader.fps = info.GetInt("RVID", "FPS", 24);
 	rvidHeader.vRes = info.GetInt("RVID", "V_RES", 192);
 	rvidHeader.interlaced = info.GetInt("RVID", "INTERLACED", 2);
+	rvidHeader.framesCompressed = info.GetInt("RVID", "COMPRESSED", 2);
 
     if (rvidHeader.interlaced == 2) {
         clear_screen();
@@ -189,25 +196,27 @@ int main(int argc, char **argv) {
         }
     }
 
-    clear_screen();
-	printf("Compress the video frames?\n");
-	printf("Video quality will not be affected.\n");
-	printf("Recommended if your video is 24FPS or less.\n");
-	printf("Depending on how may frames you have, this may take a while.\n");
-    printf("\n");
-    printf("Y: Yes\n");
-    printf("N: No\n");
+    if (rvidHeader.framesCompressed == 2) {
+        clear_screen();
+        printf("Compress the video frames?\n");
+        printf("Video quality will not be affected.\n");
+        printf("Recommended if your video is 24FPS or less.\n");
+        printf("Depending on how may frames you have, this may take a while.\n");
+        printf("\n");
+        printf("Y: Yes\n");
+        printf("N: No\n");
 
-    while (1) {
-        if (GetKeyState('Y') & 0x8000) {
-            rvidHeader.framesCompressed = 1;
-            break;
-        }
-        if (GetKeyState('N') & 0x8000) {
-            rvidHeader.framesCompressed = 0;
-            rvidHeader.framesOffset = 0x200;
-            rvidHeader.soundOffset = 0x200+((0x200*rvidHeader.vRes)*rvidHeader.frames);
-            break;
+        while (1) {
+            if (GetKeyState('Y') & 0x8000) {
+                rvidHeader.framesCompressed = 1;
+                break;
+            }
+            if (GetKeyState('N') & 0x8000) {
+                rvidHeader.framesCompressed = 0;
+                rvidHeader.framesOffset = 0x200;
+                rvidHeader.soundOffset = 0x200+((0x200*rvidHeader.vRes)*rvidHeader.frames);
+                break;
+            }
         }
     }
 
