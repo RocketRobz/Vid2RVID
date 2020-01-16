@@ -213,8 +213,6 @@ int main(int argc, char **argv) {
             }
             if (GetKeyState('N') & 0x8000) {
                 rvidHeader.framesCompressed = 0;
-                rvidHeader.framesOffset = 0x200;
-                rvidHeader.soundOffset = 0x200+((0x200*rvidHeader.vRes)*rvidHeader.frames);
                 break;
             }
         }
@@ -261,6 +259,9 @@ int main(int argc, char **argv) {
         fclose(compressedFrameSizeTable);
         rvidHeader.framesOffset = 0x200+compressedFrameSizeTableSize;
         rvidHeader.soundOffset = 0x200+compressedFrameSizeTableSize+compressedFramesSize;
+	} else {
+        rvidHeader.framesOffset = 0x200;
+        rvidHeader.soundOffset = 0x200+((0x200*rvidHeader.vRes)*rvidHeader.frames);
 	}
 
 	FILE* videoOutput = fopen("new.rvid", "wb");
