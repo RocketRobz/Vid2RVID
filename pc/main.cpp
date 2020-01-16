@@ -68,7 +68,7 @@ typedef struct rvidHeaderInfo {
 
 rvidHeaderInfo rvidHeader;
 
-#define titleText "Vid2RVID v1.2\nby RocketRobz\n"
+#define titleText "Vid2RVID v1.3\nby RocketRobz\n"
 
 /*void extractFrames(void) {
     clear_screen();
