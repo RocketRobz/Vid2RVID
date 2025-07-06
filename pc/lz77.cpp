@@ -41,9 +41,9 @@ unsigned char *lzssCompress(unsigned char *Data, int dataSize)
 						if (length - Offs < maxnum) maxnum = length - Offs;
 						int maxback = 0x1000;
 						if (Offs < maxback) maxback = Offs;
-						maxback = (int)dataptr - maxback;
+						maxback = (int)((size_t)dataptr) - maxback;
 						int tmpnr;
-						while (maxback <= (int)ptr)
+						while (maxback <= (int)((size_t)ptr))
 						{
 							if (*(unsigned short*)ptr == *(unsigned short*)dataptr && ptr[2] == dataptr[2])
 							{

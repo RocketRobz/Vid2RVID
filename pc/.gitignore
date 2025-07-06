@@ -1,0 +1,5 @@
+*.exe
+*.o
+Thumbs.db
+*.d
+desktop.ini

@@ -1,16 +1,30 @@
 # depslib dependency file v1.0
-1558505168 source:d:\disassemblies\nds\vid2rvid\pc\vid2rvid\inifile.cpp
+1751770822 source:c:\users\robz\documents\github\vid2rvid\pc\graphics\lodepng.cpp
+	"lodepng.h"
+	<limits.h>
+	<stdio.h>
+	<stdlib.h>
+
+1751770822 c:\users\robz\documents\github\vid2rvid\pc\graphics\lodepng.h
+	<string.h>
+	<vector>
+	<string>
+	"lodepng.h"
+	<iostream>
+	"lodepng.h"
+
+1751770822 source:c:\users\robz\documents\github\vid2rvid\pc\inifile.cpp
 	<cstdio>
 	<cstdlib>
 	<string>
 	"inifile.h"
 
-1499745446 d:\disassemblies\nds\vid2rvid\pc\vid2rvid\inifile.h
+1751770822 c:\users\robz\documents\github\vid2rvid\pc\inifile.h
 	<string>
 	<vector>
 	<map>
 
-1559075393 source:d:\disassemblies\nds\vid2rvid\pc\vid2rvid\main.cpp
+1751770822 source:c:\users\robz\documents\github\vid2rvid\pc\main.cpp
 	<stdio.h>
 	<stdlib.h>
 	<math.h>
@@ -26,21 +40,7 @@
 	"lz77.h"
 	"inifile.h"
 
-1558493058 d:\disassemblies\nds\vid2rvid\pc\vid2rvid\graphics\lodepng.h
-	<string.h>
-	<vector>
-	<string>
-	"lodepng.h"
-	<iostream>
-	"lodepng.h"
-
-1558497315 source:d:\disassemblies\nds\vid2rvid\pc\vid2rvid\graphics\lodepng.cpp
-	"lodepng.h"
-	<limits.h>
-	<stdio.h>
-	<stdlib.h>
-
-1559004337 source:d:\disassemblies\nds\vid2rvid\pc\vid2rvid\lz77.c
+1751770822 c:\users\robz\documents\github\vid2rvid\pc\lz77.h
 	<stdio.h>
 	<stdlib.h>
 	<math.h>
@@ -52,19 +52,7 @@
 	<stdint.h>
 	<string.h>
 
-1559075682 d:\disassemblies\nds\vid2rvid\pc\vid2rvid\lz77.h
-	<stdio.h>
-	<stdlib.h>
-	<math.h>
-	<time.h>
-	<ctype.h>
-	<sys/stat.h>
-	<sys/types.h>
-	<unistd.h>
-	<stdint.h>
-	<string.h>
-
-1559076559 source:d:\disassemblies\nds\vid2rvid\pc\vid2rvid\lz77.cpp
+1751773796 source:c:\users\robz\documents\github\vid2rvid\pc\lz77.cpp
 	<stdio.h>
 	<stdlib.h>
 	<math.h>
@@ -77,9 +65,6 @@
 	<string.h>
 	"tonccpy.h"
 
-1559007798 d:\disassemblies\nds\vid2rvid\pc\vid2rvid\tonccpy.h
+1751770822 c:\users\robz\documents\github\vid2rvid\pc\tonccpy.h
 	<stdint.h>
-
-1559007818 source:d:\disassemblies\nds\vid2rvid\pc\vid2rvid\tonccpy.c
-	"tonccpy.h"
 
