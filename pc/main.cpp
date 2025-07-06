@@ -244,7 +244,7 @@ int main(int argc, char **argv) {
 
                 compressedFrame = lzssCompress((unsigned char*)convertedFrame, 0x200*rvidHeader.vRes);
 
-                printf("%i/%i\n", i, foundFrames);
+                if ((i % 500) == 0) printf("%i/%i\n", i, foundFrames);
 
                 // Save current frame to temp file
                 fwrite(compressedFrame, 1, compressedDataSize, compressedFrames);
@@ -323,7 +323,7 @@ int main(int argc, char **argv) {
 				convertedFrame[i] = image[i*4]>>3 | (image[(i*4)+1]>>3)<<5 | (image[(i*4)+2]>>3)<<10 | BIT(15);
 			}
 
-			printf("%i/%i\n", i, foundFrames);
+			if ((i % 500) == 0) printf("%i/%i\n", i, foundFrames);
 
 			// Save current frame to a file
 			fwrite(convertedFrame, 1, 0x200*rvidHeader.vRes, videoOutput);
