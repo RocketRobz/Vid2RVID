@@ -38,10 +38,10 @@ uint32_t soundSize = 0;
 
 uint8_t headerToFile[0x200] = {0};
 
-off_t getFileSize(const char *fileName)
+uint32_t getFileSize(const char *fileName)
 {
     FILE* fp = fopen(fileName, "rb");
-    off_t fsize = 0;
+    uint32_t fsize = 0;
     if (fp) {
         fseek(fp, 0, SEEK_END);
         fsize = ftell(fp);			// Get source file's size
@@ -274,8 +274,8 @@ int main(int argc, char **argv) {
 	printf("Converting...\n");
 
     if (rvidHeader.framesCompressed == 1) {
-        off_t fsize = compressedFrameSizeTableSize;
-        off_t offset = 0;
+        uint32_t fsize = compressedFrameSizeTableSize;
+        uint32_t offset = 0;
         int numr = 0;
 
         compressedFrameSizeTable = fopen("tempTable.bin", "rb");
@@ -336,8 +336,8 @@ int main(int argc, char **argv) {
         clear_screen();
         printf("Adding sound...\n");
 
-        off_t fsize = getFileSize("rvidFrames/sound.raw.pcm");
-        off_t offset = 0;
+        uint32_t fsize = getFileSize("rvidFrames/sound.raw.pcm");
+        uint32_t offset = 0;
         int numr;
 
         FILE* soundFile = fopen("rvidFrames/sound.raw.pcm", "rb");
