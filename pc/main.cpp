@@ -238,8 +238,40 @@ int main(int argc, char **argv) {
                 unsigned width, height;
                 lodepng::decode(image, width, height, framePath);
 
+                bool alternatePixel = false;
+                int x = 0;
                 for(unsigned i=0;i<image.size()/4;i++) {
-                    convertedFrame[i] = image[i*4]>>3 | (image[(i*4)+1]>>3)<<5 | (image[(i*4)+2]>>3)<<10 | BIT(15);
+                    if (alternatePixel) {
+                        if (image[(i*4)] >= 0x4 && image[(i*4)] < 0xFC) {
+                            image[(i*4)] += 0x4;
+                        }
+                        if (image[(i*4)+1] >= 0x2 && image[(i*4)+1] < 0xFE) {
+                            image[(i*4)+1] += 0x2;
+                        }
+                        if (image[(i*4)+2] >= 0x4 && image[(i*4)+2] < 0xFC) {
+                            image[(i*4)+2] += 0x4;
+                        }
+                    }
+
+                    const uint16_t green = (image[(i*4)+1] >> 2) << 5;
+                    uint16_t color = image[i*4] >> 3 | (image[(i*4)+2] >> 3) << 10;
+                    if (green & BIT(5)) {
+                        color |= BIT(15);
+                    }
+                    for (int gBit = 6; gBit <= 10; gBit++) {
+                        if (green & BIT(gBit)) {
+                            color |= BIT(gBit-1);
+                        }
+                    }
+
+                    convertedFrame[i] = color;
+
+                    x++;
+                    if ((unsigned)x == width) {
+                        alternatePixel = !alternatePixel;
+                        x=0;
+                    }
+                    alternatePixel = !alternatePixel;
                 }
 
                 compressedFrame = lzssCompress((unsigned char*)convertedFrame, 0x200*rvidHeader.vRes);
@@ -319,8 +351,40 @@ int main(int argc, char **argv) {
 			unsigned width, height;
 			lodepng::decode(image, width, height, framePath);
 
+            bool alternatePixel = false;
+            int x = 0;
 			for(unsigned i=0;i<image.size()/4;i++) {
-				convertedFrame[i] = image[i*4]>>3 | (image[(i*4)+1]>>3)<<5 | (image[(i*4)+2]>>3)<<10 | BIT(15);
+                if (alternatePixel) {
+                    if (image[(i*4)] >= 0x4 && image[(i*4)] < 0xFC) {
+                        image[(i*4)] += 0x4;
+                    }
+                    if (image[(i*4)+1] >= 0x2 && image[(i*4)+1] < 0xFE) {
+                        image[(i*4)+1] += 0x2;
+                    }
+                    if (image[(i*4)+2] >= 0x4 && image[(i*4)+2] < 0xFC) {
+                        image[(i*4)+2] += 0x4;
+                    }
+                }
+
+                const uint16_t green = (image[(i*4)+1] >> 2) << 5;
+                uint16_t color = image[i*4] >> 3 | (image[(i*4)+2] >> 3) << 10;
+                if (green & BIT(5)) {
+                    color |= BIT(15);
+                }
+                for (int gBit = 6; gBit <= 10; gBit++) {
+                    if (green & BIT(gBit)) {
+                        color |= BIT(gBit-1);
+                    }
+                }
+
+				convertedFrame[i] = color;
+
+                x++;
+                if ((unsigned)x == width) {
+                    alternatePixel = !alternatePixel;
+                    x=0;
+                }
+                alternatePixel = !alternatePixel;
 			}
 
 			if ((i % 500) == 0) printf("%i/%i\n", i, foundFrames);
