@@ -18,14 +18,14 @@ template<class TYPE> inline TYPE BIT(const TYPE & x)
 { return TYPE(1) << x; }
 
 void clear_screen(char fill = ' ') {
-    COORD tl = {0,0};
-    CONSOLE_SCREEN_BUFFER_INFO s;
-    HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
-    GetConsoleScreenBufferInfo(console, &s);
-    DWORD written, cells = s.dwSize.X * s.dwSize.Y;
-    FillConsoleOutputCharacter(console, fill, cells, tl, &written);
-    FillConsoleOutputAttribute(console, s.wAttributes, cells, tl, &written);
-    SetConsoleCursorPosition(console, tl);
+	COORD tl = {0,0};
+	CONSOLE_SCREEN_BUFFER_INFO s;
+	HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
+	GetConsoleScreenBufferInfo(console, &s);
+	DWORD written, cells = s.dwSize.X * s.dwSize.Y;
+	FillConsoleOutputCharacter(console, fill, cells, tl, &written);
+	FillConsoleOutputAttribute(console, s.wAttributes, cells, tl, &written);
+	SetConsoleCursorPosition(console, tl);
 }
 
 uint8_t convertedFrame[256*192];
@@ -40,11 +40,11 @@ uint8_t headerToFile[0x200] = {0};
 
 uint32_t getFileSize(const char *fileName)
 {
-    FILE* fp = fopen(fileName, "rb");
-    uint32_t fsize = 0;
-    if (fp) {
-        fseek(fp, 0, SEEK_END);
-        fsize = ftell(fp);			// Get source file's size
+	FILE* fp = fopen(fileName, "rb");
+	uint32_t fsize = 0;
+	if (fp) {
+		fseek(fp, 0, SEEK_END);
+		fsize = ftell(fp);			// Get source file's size
 		fseek(fp, 0, SEEK_SET);
 	}
 	fclose(fp);
@@ -73,25 +73,25 @@ rvidHeaderInfo rvidHeader;
 #define titleText "Vid2RVID v1.4\nby Rocket Robz\n"
 
 /*void extractFrames(void) {
-    clear_screen();
-    printf("Extracting frames...\n");
+	clear_screen();
+	printf("Extracting frames...\n");
 
-    mkdir("rvidFrames_extracted");
+	mkdir("rvidFrames_extracted");
 	FILE* videoInput = fopen("source.rvid", "rb");
-    chdir("rvidFrames_extracted");
+	chdir("rvidFrames_extracted");
 	FILE* frameOutput;
 	char frameOutputFileName[32];
 	fread(&rvidHeader, 1, sizeof(rvidHeaderInfo), videoInput);
 	fseek(videoInput, 0x200, SEEK_SET);
 	for (int i = 0; i < rvidHeader.frames; i++) {
-        if (fread(convertedFrame, 1, 0x200*rvidHeader.vRes, videoInput) > 0) {
-            snprintf(frameOutputFileName, sizeof(frameOutputFileName), "frame%i.bin", i);
-            frameOutput = fopen(frameOutputFileName, "wb");
-            fwrite(convertedFrame, 1, 0x200*rvidHeader.vRes, frameOutput);
-            fclose(frameOutput);
-        } else {
-            break;
-        }
+		if (fread(convertedFrame, 1, 0x200*rvidHeader.vRes, videoInput) > 0) {
+			snprintf(frameOutputFileName, sizeof(frameOutputFileName), "frame%i.bin", i);
+			frameOutput = fopen(frameOutputFileName, "wb");
+			fwrite(convertedFrame, 1, 0x200*rvidHeader.vRes, frameOutput);
+			fclose(frameOutput);
+		} else {
+			break;
+		}
 	}
 	fclose(videoInput);
 	printf("Done!\n");
@@ -104,56 +104,56 @@ int main(int argc, char **argv) {
 	printf("A: Convert\n");
 	//printf("E: Extract raw frames from source.rvid\n");
 
-    while (1) {
-        if (GetKeyState('A') & 0x8000) {
-            break;
-        }
-        /*if (GetKeyState('E') & 0x8000) {
-            extractFrames();
-            return 0;
-            break;
-        }*/
-    }
+	while (1) {
+		if (GetKeyState('A') & 0x8000) {
+			break;
+		}
+		/*if (GetKeyState('E') & 0x8000) {
+			extractFrames();
+			return 0;
+			break;
+		}*/
+	}
 
 	CIniFile info( "rvidFrames/info.ini" );
 
-    if ((info.GetInt("RVID", "HAS_SOUND", 1) == 1) && (access("rvidFrames/sound.raw.pcm", F_OK) == 0)) {
-        rvidHeader.sampleRate = info.GetInt("RVID", "AUDIO_HZ", 0);
-        if (rvidHeader.sampleRate > 0) {
-            rvidHeader.hasSound = 1;
-        } else {
-            clear_screen();
-            printf("Sound file found!\n");
-            printf("\n");
-            printf("What is the sample rate?\n");
-            printf("0: Exclude sound\n");
-            printf("1: 8000hz\n");
-            printf("2: 11025hz\n");
-            printf("3: 16000hz\n");
+	if ((info.GetInt("RVID", "HAS_SOUND", 1) == 1) && (access("rvidFrames/sound.raw.pcm", F_OK) == 0)) {
+		rvidHeader.sampleRate = info.GetInt("RVID", "AUDIO_HZ", 0);
+		if (rvidHeader.sampleRate > 0) {
+			rvidHeader.hasSound = 1;
+		} else {
+			clear_screen();
+			printf("Sound file found!\n");
+			printf("\n");
+			printf("What is the sample rate?\n");
+			printf("0: Exclude sound\n");
+			printf("1: 8000hz\n");
+			printf("2: 11025hz\n");
+			printf("3: 16000hz\n");
 
-            while (1) {
-                if (GetKeyState('0') & 0x8000) {
-                    rvidHeader.hasSound = 0;
-                    break;
-                }
-                if (GetKeyState('1') & 0x8000) {
-                    rvidHeader.sampleRate = 8000;
-                    rvidHeader.hasSound = 1;
-                    break;
-                }
-                if (GetKeyState('2') & 0x8000) {
-                    rvidHeader.sampleRate = 11025;
-                    rvidHeader.hasSound = 1;
-                    break;
-                }
-                if (GetKeyState('3') & 0x8000) {
-                    rvidHeader.sampleRate = 16000;
-                    rvidHeader.hasSound = 1;
-                    break;
-                }
-            }
-        }
-    }
+			while (1) {
+				if (GetKeyState('0') & 0x8000) {
+					rvidHeader.hasSound = 0;
+					break;
+				}
+				if (GetKeyState('1') & 0x8000) {
+					rvidHeader.sampleRate = 8000;
+					rvidHeader.hasSound = 1;
+					break;
+				}
+				if (GetKeyState('2') & 0x8000) {
+					rvidHeader.sampleRate = 11025;
+					rvidHeader.hasSound = 1;
+					break;
+				}
+				if (GetKeyState('3') & 0x8000) {
+					rvidHeader.sampleRate = 16000;
+					rvidHeader.hasSound = 1;
+					break;
+				}
+			}
+		}
+	}
 
 	clear_screen();
 	printf("Getting number of frames...\n");
@@ -167,92 +167,95 @@ int main(int argc, char **argv) {
 			snprintf(framePath, sizeof(framePath), "rvidFrames/frame%i.png", foundFrames);
 			if (access(framePath, F_OK) != 0) break;
 		}
-        foundFrames--;
+		foundFrames--;
 	}
 
 	rvidHeader.formatString = 0x44495652;	// "RVID"
 	rvidHeader.ver = rvidVer;
 	rvidHeader.frames = foundFrames+1;
 	rvidHeader.fps = info.GetInt("RVID", "FPS", 24);
-	rvidHeader.vRes = info.GetInt("RVID", "V_RES", 192);
+	rvidHeader.vRes = 0;
 	rvidHeader.interlaced = info.GetInt("RVID", "INTERLACED", 2);
 	rvidHeader.framesCompressed = info.GetInt("RVID", "COMPRESSED", 2);
 
-    if (rvidHeader.interlaced == 2) {
-        clear_screen();
-        printf("Is the video interlaced?\n");
-        printf("Video will be played twice the set frame rate, if so.\n");
-        printf("\n");
-        printf("Y: Yes\n");
-        printf("N: No\n");
+	if (rvidHeader.interlaced == 2) {
+		clear_screen();
+		printf("Is the video interlaced?\n");
+		printf("Video will be played twice the set frame rate, if so.\n");
+		printf("\n");
+		printf("Y: Yes\n");
+		printf("N: No\n");
 
-        while (1) {
-            if (GetKeyState('Y') & 0x8000) {
-                rvidHeader.interlaced = 1;
-                break;
-            }
-            if (GetKeyState('N') & 0x8000) {
-                rvidHeader.interlaced = 0;
-                break;
-            }
-        }
-    }
+		while (1) {
+			if (GetKeyState('Y') & 0x8000) {
+				rvidHeader.interlaced = 1;
+				break;
+			}
+			if (GetKeyState('N') & 0x8000) {
+				rvidHeader.interlaced = 0;
+				break;
+			}
+		}
+	}
 
-    if (rvidHeader.framesCompressed == 2) {
-        clear_screen();
-        printf("Compress the video frames?\n");
-        printf("Video quality will not be affected.\n");
-        printf("Recommended if your video is 24FPS or less.\n");
-        printf("Depending on how may frames you have, this may take a while.\n");
-        printf("\n");
-        printf("Y: Yes\n");
-        printf("N: No\n");
+	if (rvidHeader.framesCompressed == 2) {
+		clear_screen();
+		printf("Compress the video frames?\n");
+		printf("Video quality will not be affected.\n");
+		printf("Recommended if your video is 24FPS or less.\n");
+		printf("Depending on how may frames you have, this may take a while.\n");
+		printf("\n");
+		printf("Y: Yes\n");
+		printf("N: No\n");
 
-        while (1) {
-            if (GetKeyState('Y') & 0x8000) {
-                rvidHeader.framesCompressed = 1;
-                break;
-            }
-            if (GetKeyState('N') & 0x8000) {
-                rvidHeader.framesCompressed = 0;
-                break;
-            }
-        }
-    }
+		while (1) {
+			if (GetKeyState('Y') & 0x8000) {
+				rvidHeader.framesCompressed = 1;
+				break;
+			}
+			if (GetKeyState('N') & 0x8000) {
+				rvidHeader.framesCompressed = 0;
+				break;
+			}
+		}
+	}
 
 	FILE* frameInput;
 
-    FILE* compressedFrameSizeTable;
-    FILE* compressedFrames;
+	FILE* compressedFrameSizeTable;
+	FILE* compressedFrames;
 	if (rvidHeader.framesCompressed == 1) {
-        clear_screen();
-        printf("Compressing...\n");
+		clear_screen();
+		printf("Compressing...\n");
 
-        compressedFrameSizeTable = fopen("tempTable.bin", "wb");
-        compressedFrames = fopen("tempFrames.bin", "wb");
-        for (int i = 0; i <= foundFrames; i++) {
-            snprintf(framePath, sizeof(framePath), "rvidFrames/frame%i.png", i);
-            frameInput = fopen(framePath, "rb");
-            if (frameInput) {
-                fclose(frameInput);
+		compressedFrameSizeTable = fopen("tempTable.bin", "wb");
+		compressedFrames = fopen("tempFrames.bin", "wb");
+		for (int i = 0; i <= foundFrames; i++) {
+			snprintf(framePath, sizeof(framePath), "rvidFrames/frame%i.png", i);
+			frameInput = fopen(framePath, "rb");
+			if (frameInput) {
+				fclose(frameInput);
 
-                std::vector<unsigned char> image;
-                unsigned width, height;
-                lodepng::decode(image, width, height, framePath);
+				std::vector<unsigned char> image;
+				unsigned width, height;
+				lodepng::decode(image, width, height, framePath);
+				if (rvidHeader.vRes == 0) {
+					rvidHeader.vRes = (uint8_t)height;
+				}
 
-                bool paletteSet[256] = {false};
-                uint16_t palette[256] = {0};
-                for(unsigned i=0;i<image.size()/4;i++) {
-                    const uint16_t green = (image[(i*4)+1] >> 2) << 5;
-                    uint16_t color = image[i*4] >> 3 | (image[(i*4)+2] >> 3) << 10;
-                    if (green & BIT(5)) {
-                        color |= BIT(15);
-                    }
-                    for (int gBit = 6; gBit <= 10; gBit++) {
-                        if (green & BIT(gBit)) {
-                            color |= BIT(gBit-1);
-                        }
-                    }
+				bool paletteSet[256] = {false};
+				uint16_t palette[256] = {0};
+				for(unsigned i=0;i<image.size()/4;i++) {
+					const uint16_t green = (image[(i*4)+1] >> 2) << 5;
+					uint16_t color = image[i*4] >> 3 | (image[(i*4)+2] >> 3) << 10;
+					if (green & BIT(5)) {
+						color |= BIT(15);
+					}
+					for (int gBit = 6; gBit <= 10; gBit++) {
+						if (green & BIT(gBit)) {
+							color |= BIT(gBit-1);
+						}
+					}
 
 					int p = 0;
 					for (p = 0; p < 256; p++) {
@@ -264,31 +267,42 @@ int main(int argc, char **argv) {
 							break;
 						}
 					}
-                    convertedFrame[i] = p;
-                }
+					convertedFrame[i] = p;
+				}
 
-                compressedFrame = lzssCompress((unsigned char*)convertedFrame, 0x100*rvidHeader.vRes);
+				compressedFrame = lzssCompress((unsigned char*)convertedFrame, 0x100*rvidHeader.vRes);
 
-                if ((i % 500) == 0) printf("%i/%i\n", i, foundFrames);
+				if ((i % 500) == 0) printf("%i/%i\n", i, foundFrames);
 
-                // Save current frame to temp file
-                fwrite(palette, 2, 256, compressedFrames);
-                fwrite(compressedFrame, 1, compressedDataSize, compressedFrames);
-                fwrite(&compressedDataSize, 4, 1, compressedFrameSizeTable);
-                compressedFrameSizeTableSize += 4;
-                compressedFramesSize += 0x200;
-                compressedFramesSize += compressedDataSize;
-            } else {
-                break;
-            }
-        }
-        fclose(compressedFrames);
-        fclose(compressedFrameSizeTable);
-        rvidHeader.framesOffset = 0x200+compressedFrameSizeTableSize;
-        rvidHeader.soundOffset = 0x200+compressedFrameSizeTableSize+compressedFramesSize;
+				// Save current frame to temp file
+				fwrite(palette, 2, 256, compressedFrames);
+				fwrite(compressedFrame, 1, compressedDataSize, compressedFrames);
+				fwrite(&compressedDataSize, 4, 1, compressedFrameSizeTable);
+				compressedFrameSizeTableSize += 4;
+				compressedFramesSize += 0x200;
+				compressedFramesSize += compressedDataSize;
+			} else {
+				break;
+			}
+		}
+		fclose(compressedFrames);
+		fclose(compressedFrameSizeTable);
+		rvidHeader.framesOffset = 0x200+compressedFrameSizeTableSize;
+		rvidHeader.soundOffset = 0x200+compressedFrameSizeTableSize+compressedFramesSize;
 	} else {
-        rvidHeader.framesOffset = 0x200;
-        rvidHeader.soundOffset = 0x200+((0x200+(0x100*rvidHeader.vRes))*rvidHeader.frames);
+		snprintf(framePath, sizeof(framePath), "rvidFrames/frame%i.png", 0);
+		frameInput = fopen(framePath, "rb");
+		if (frameInput) {
+			fclose(frameInput);
+
+			std::vector<unsigned char> image;
+			unsigned width, height;
+			lodepng::decode(image, width, height, framePath);
+			rvidHeader.vRes = (uint8_t)height;
+		}
+
+		rvidHeader.framesOffset = 0x200;
+		rvidHeader.soundOffset = 0x200+((0x200+(0x100*rvidHeader.vRes))*rvidHeader.frames);
 	}
 
 	FILE* videoOutput = fopen("new.rvid", "wb");
@@ -300,43 +314,43 @@ int main(int argc, char **argv) {
 	clear_screen();
 	printf("Converting...\n");
 
-    if (rvidHeader.framesCompressed == 1) {
-        uint32_t fsize = compressedFrameSizeTableSize;
-        uint32_t offset = 0;
-        int numr = 0;
+	if (rvidHeader.framesCompressed == 1) {
+		uint32_t fsize = compressedFrameSizeTableSize;
+		uint32_t offset = 0;
+		int numr = 0;
 
-        compressedFrameSizeTable = fopen("tempTable.bin", "rb");
-        while (1)
-        {
-            // Add size table to .rvid file
-            numr = fread(fileBuffer, 1, sizeof(fileBuffer), compressedFrameSizeTable);
-            fwrite(fileBuffer, 1, numr, videoOutput);
-            offset += sizeof(fileBuffer);
+		compressedFrameSizeTable = fopen("tempTable.bin", "rb");
+		while (1)
+		{
+			// Add size table to .rvid file
+			numr = fread(fileBuffer, 1, sizeof(fileBuffer), compressedFrameSizeTable);
+			fwrite(fileBuffer, 1, numr, videoOutput);
+			offset += sizeof(fileBuffer);
 
-            if (offset > fsize) {
-                break;
-            }
-        }
-        fclose(compressedFrameSizeTable);
+			if (offset > fsize) {
+				break;
+			}
+		}
+		fclose(compressedFrameSizeTable);
 
-        fsize = compressedFramesSize;
-        offset = 0;
-        numr = 0;
+		fsize = compressedFramesSize;
+		offset = 0;
+		numr = 0;
 
-        compressedFrames = fopen("tempFrames.bin", "rb");
-        while (1)
-        {
-            // Add compressed frames to .rvid file
-            numr = fread(fileBuffer, 1, sizeof(fileBuffer), compressedFrames);
-            fwrite(fileBuffer, 1, numr, videoOutput);
-            offset += sizeof(fileBuffer);
+		compressedFrames = fopen("tempFrames.bin", "rb");
+		while (1)
+		{
+			// Add compressed frames to .rvid file
+			numr = fread(fileBuffer, 1, sizeof(fileBuffer), compressedFrames);
+			fwrite(fileBuffer, 1, numr, videoOutput);
+			offset += sizeof(fileBuffer);
 
-            if (offset > fsize) {
-                break;
-            }
-        }
-        fclose(compressedFrames);
-    } else for (int i = 0; i <= foundFrames; i++) {
+			if (offset > fsize) {
+				break;
+			}
+		}
+		fclose(compressedFrames);
+	} else for (int i = 0; i <= foundFrames; i++) {
 		snprintf(framePath, sizeof(framePath), "rvidFrames/frame%i.png", i);
 		frameInput = fopen(framePath, "rb");
 		if (frameInput) {
@@ -346,19 +360,19 @@ int main(int argc, char **argv) {
 			unsigned width, height;
 			lodepng::decode(image, width, height, framePath);
 
-            bool paletteSet[256] = {false};
-            uint16_t palette[256] = {0};
-            for(unsigned i=0;i<image.size()/4;i++) {
-                const uint16_t green = (image[(i*4)+1] >> 2) << 5;
-                uint16_t color = image[i*4] >> 3 | (image[(i*4)+2] >> 3) << 10;
-                if (green & BIT(5)) {
-                    color |= BIT(15);
-                }
-                for (int gBit = 6; gBit <= 10; gBit++) {
-                    if (green & BIT(gBit)) {
-                        color |= BIT(gBit-1);
-                    }
-                }
+			bool paletteSet[256] = {false};
+			uint16_t palette[256] = {0};
+			for(unsigned i=0;i<image.size()/4;i++) {
+				const uint16_t green = (image[(i*4)+1] >> 2) << 5;
+				uint16_t color = image[i*4] >> 3 | (image[(i*4)+2] >> 3) << 10;
+				if (green & BIT(5)) {
+					color |= BIT(15);
+				}
+				for (int gBit = 6; gBit <= 10; gBit++) {
+					if (green & BIT(gBit)) {
+						color |= BIT(gBit-1);
+					}
+				}
 
 				int p = 0;
 				for (p = 0; p < 256; p++) {
@@ -370,13 +384,13 @@ int main(int argc, char **argv) {
 						break;
 					}
 				}
-                convertedFrame[i] = p;
+				convertedFrame[i] = p;
 			}
 
 			if ((i % 500) == 0) printf("%i/%i\n", i, foundFrames);
 
 			// Save current frame to a file
-            fwrite(palette, 2, 256, videoOutput);
+			fwrite(palette, 2, 256, videoOutput);
 			fwrite(convertedFrame, 1, 0x100*rvidHeader.vRes, videoOutput);
 		} else {
 			break;
@@ -384,38 +398,37 @@ int main(int argc, char **argv) {
 	}
 
 	if (rvidHeader.hasSound == 1) {
-        clear_screen();
-        printf("Adding sound...\n");
+		clear_screen();
+		printf("Adding sound...\n");
 
-        uint32_t fsize = getFileSize("rvidFrames/sound.raw.pcm");
-        uint32_t offset = 0;
-        int numr;
+		uint32_t fsize = getFileSize("rvidFrames/sound.raw.pcm");
+		uint32_t offset = 0;
+		int numr;
 
-        FILE* soundFile = fopen("rvidFrames/sound.raw.pcm", "rb");
-        while (1)
-        {
-            // Add sound to .rvid file
-            numr = fread(fileBuffer, 1, sizeof(fileBuffer), soundFile);
-            fwrite(fileBuffer, 1, numr, videoOutput);
-            offset += sizeof(fileBuffer);
+		FILE* soundFile = fopen("rvidFrames/sound.raw.pcm", "rb");
+		while (1)
+		{
+			// Add sound to .rvid file
+			numr = fread(fileBuffer, 1, sizeof(fileBuffer), soundFile);
+			fwrite(fileBuffer, 1, numr, videoOutput);
+			offset += sizeof(fileBuffer);
 
-            if (offset > fsize) {
-                break;
-            }
-        }
-        fclose(soundFile);
-    }
+			if (offset > fsize) {
+				break;
+			}
+		}
+		fclose(soundFile);
+	}
 
-    fclose(videoOutput);
+	fclose(videoOutput);
 
-    if (rvidHeader.framesCompressed == 1) {
-        remove("tempFrames.bin");
-        remove("tempTable.bin");
-    }
+	if (rvidHeader.framesCompressed == 1) {
+		remove("tempFrames.bin");
+		remove("tempTable.bin");
+	}
 
-    clear_screen();
+	clear_screen();
 	printf("Done!\n");
 
 	return 0;
 }
-
