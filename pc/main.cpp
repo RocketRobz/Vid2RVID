@@ -28,7 +28,7 @@ void clear_screen(char fill = ' ') {
     SetConsoleCursorPosition(console, tl);
 }
 
-uint16_t convertedFrame[256*192];
+uint8_t convertedFrame[256*192];
 unsigned char* compressedFrame;
 
 char fileBuffer[0x100000] = {0};
@@ -52,6 +52,8 @@ uint32_t getFileSize(const char *fileName)
 	return fsize;
 }
 
+#define rvidVer 3
+
 typedef struct rvidHeaderInfo {
 	uint32_t formatString;  	    // "RVID" string
 	uint32_t ver;			        // File format version
@@ -68,7 +70,7 @@ typedef struct rvidHeaderInfo {
 
 rvidHeaderInfo rvidHeader;
 
-#define titleText "Vid2RVID v1.3\nby RocketRobz\n"
+#define titleText "Vid2RVID v1.4\nby Rocket Robz\n"
 
 /*void extractFrames(void) {
     clear_screen();
@@ -169,7 +171,7 @@ int main(int argc, char **argv) {
 	}
 
 	rvidHeader.formatString = 0x44495652;	// "RVID"
-	rvidHeader.ver = 2;
+	rvidHeader.ver = rvidVer;
 	rvidHeader.frames = foundFrames+1;
 	rvidHeader.fps = info.GetInt("RVID", "FPS", 24);
 	rvidHeader.vRes = info.GetInt("RVID", "V_RES", 192);
@@ -238,21 +240,9 @@ int main(int argc, char **argv) {
                 unsigned width, height;
                 lodepng::decode(image, width, height, framePath);
 
-                bool alternatePixel = false;
-                int x = 0;
+                bool paletteSet[256] = {false};
+                uint16_t palette[256] = {0};
                 for(unsigned i=0;i<image.size()/4;i++) {
-                    if (alternatePixel) {
-                        if (image[(i*4)] >= 0x4 && image[(i*4)] < 0xFC) {
-                            image[(i*4)] += 0x4;
-                        }
-                        if (image[(i*4)+1] >= 0x2 && image[(i*4)+1] < 0xFE) {
-                            image[(i*4)+1] += 0x2;
-                        }
-                        if (image[(i*4)+2] >= 0x4 && image[(i*4)+2] < 0xFC) {
-                            image[(i*4)+2] += 0x4;
-                        }
-                    }
-
                     const uint16_t green = (image[(i*4)+1] >> 2) << 5;
                     uint16_t color = image[i*4] >> 3 | (image[(i*4)+2] >> 3) << 10;
                     if (green & BIT(5)) {
@@ -264,24 +254,29 @@ int main(int argc, char **argv) {
                         }
                     }
 
-                    convertedFrame[i] = color;
-
-                    x++;
-                    if ((unsigned)x == width) {
-                        alternatePixel = !alternatePixel;
-                        x=0;
-                    }
-                    alternatePixel = !alternatePixel;
+					int p = 0;
+					for (p = 0; p < 256; p++) {
+						if (!paletteSet[p]) {
+							palette[p] = color;
+							paletteSet[p] = true;
+							break;
+						} else if (palette[p] == color) {
+							break;
+						}
+					}
+                    convertedFrame[i] = p;
                 }
 
-                compressedFrame = lzssCompress((unsigned char*)convertedFrame, 0x200*rvidHeader.vRes);
+                compressedFrame = lzssCompress((unsigned char*)convertedFrame, 0x100*rvidHeader.vRes);
 
                 if ((i % 500) == 0) printf("%i/%i\n", i, foundFrames);
 
                 // Save current frame to temp file
+                fwrite(palette, 2, 256, compressedFrames);
                 fwrite(compressedFrame, 1, compressedDataSize, compressedFrames);
                 fwrite(&compressedDataSize, 4, 1, compressedFrameSizeTable);
                 compressedFrameSizeTableSize += 4;
+                compressedFramesSize += 0x200;
                 compressedFramesSize += compressedDataSize;
             } else {
                 break;
@@ -293,7 +288,7 @@ int main(int argc, char **argv) {
         rvidHeader.soundOffset = 0x200+compressedFrameSizeTableSize+compressedFramesSize;
 	} else {
         rvidHeader.framesOffset = 0x200;
-        rvidHeader.soundOffset = 0x200+((0x200*rvidHeader.vRes)*rvidHeader.frames);
+        rvidHeader.soundOffset = 0x200+((0x200+(0x100*rvidHeader.vRes))*rvidHeader.frames);
 	}
 
 	FILE* videoOutput = fopen("new.rvid", "wb");
@@ -351,21 +346,9 @@ int main(int argc, char **argv) {
 			unsigned width, height;
 			lodepng::decode(image, width, height, framePath);
 
-            bool alternatePixel = false;
-            int x = 0;
-			for(unsigned i=0;i<image.size()/4;i++) {
-                if (alternatePixel) {
-                    if (image[(i*4)] >= 0x4 && image[(i*4)] < 0xFC) {
-                        image[(i*4)] += 0x4;
-                    }
-                    if (image[(i*4)+1] >= 0x2 && image[(i*4)+1] < 0xFE) {
-                        image[(i*4)+1] += 0x2;
-                    }
-                    if (image[(i*4)+2] >= 0x4 && image[(i*4)+2] < 0xFC) {
-                        image[(i*4)+2] += 0x4;
-                    }
-                }
-
+            bool paletteSet[256] = {false};
+            uint16_t palette[256] = {0};
+            for(unsigned i=0;i<image.size()/4;i++) {
                 const uint16_t green = (image[(i*4)+1] >> 2) << 5;
                 uint16_t color = image[i*4] >> 3 | (image[(i*4)+2] >> 3) << 10;
                 if (green & BIT(5)) {
@@ -377,20 +360,24 @@ int main(int argc, char **argv) {
                     }
                 }
 
-				convertedFrame[i] = color;
-
-                x++;
-                if ((unsigned)x == width) {
-                    alternatePixel = !alternatePixel;
-                    x=0;
-                }
-                alternatePixel = !alternatePixel;
+				int p = 0;
+				for (p = 0; p < 256; p++) {
+					if (!paletteSet[p]) {
+						palette[p] = color;
+						paletteSet[p] = true;
+						break;
+					} else if (palette[p] == color) {
+						break;
+					}
+				}
+                convertedFrame[i] = p;
 			}
 
 			if ((i % 500) == 0) printf("%i/%i\n", i, foundFrames);
 
 			// Save current frame to a file
-			fwrite(convertedFrame, 1, 0x200*rvidHeader.vRes, videoOutput);
+            fwrite(palette, 2, 256, videoOutput);
+			fwrite(convertedFrame, 1, 0x100*rvidHeader.vRes, videoOutput);
 		} else {
 			break;
 		}
