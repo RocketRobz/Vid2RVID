@@ -237,6 +237,48 @@ int main(int argc, char **argv) {
 		}
 	}
 
+	if (access("rvidFrames/256colors", F_OK) != 0) {
+		if (access("Process Frames.bat", F_OK) != 0) {
+			const uint16_t newLine = 0x0A0D;
+			const char* line1 = "@echo Processing frames, this may take a while...";
+			const char* line2 = "@cd rvidFrames";
+			const char* line3 = "@magick mogrify -ordered-dither o8x8,32,64,32 -colors 256 *.png";
+			const char* line4 = "@mkdir 256colors";
+			const char* line5 = "@echo Done!";
+			const char* line6 = "@pause";
+
+			FILE* batFile = fopen("Process Frames.bat", "wb");
+			fwrite(line1, 1, strlen(line1), batFile);
+			fwrite(&newLine, 2, 1, batFile);
+			fwrite(line2, 1, strlen(line2), batFile);
+			fwrite(&newLine, 2, 1, batFile);
+			fwrite(line3, 1, strlen(line3), batFile);
+			fwrite(&newLine, 2, 1, batFile);
+			fwrite(line4, 1, strlen(line4), batFile);
+			fwrite(&newLine, 2, 1, batFile);
+			fwrite(line5, 1, strlen(line5), batFile);
+			fwrite(&newLine, 2, 1, batFile);
+			fwrite(line6, 1, strlen(line6), batFile);
+			fclose(batFile);
+		}
+
+		while (access("rvidFrames/256colors", F_OK) != 0) {
+			clear_screen();
+			printf("Ensure ImageMagick is installed, then open \"Process Frames.bat\".\n");
+			printf("When the processing is done, press the \"A\" key.\n");
+
+			while (1) {
+				if (GetKeyState('A') & 0x8000) {
+					break;
+				}
+			}
+		}
+	}
+
+	if (access("Process Frames.bat", F_OK) == 0) {
+		remove("Process Frames.bat");
+	}
+
 	FILE* frameInput;
 
 	FILE* compressedFrameSizeTable;
