@@ -29,6 +29,7 @@ void clear_screen(char fill = ' ') {
 }
 
 uint8_t convertedFrame[256*192];
+uint8_t halvedFrame[256*96];
 unsigned char* compressedFrame;
 
 char fileBuffer[0x100000] = {0};
@@ -175,13 +176,13 @@ int main(int argc, char **argv) {
 	rvidHeader.frames = foundFrames+1;
 	rvidHeader.fps = info.GetInt("RVID", "FPS", 24);
 	rvidHeader.vRes = 0;
-	rvidHeader.interlaced = info.GetInt("RVID", "INTERLACED", 2);
+	rvidHeader.interlaced = (rvidHeader.fps > 30) ? 1 : 0;
 	rvidHeader.framesCompressed = info.GetInt("RVID", "COMPRESSED", 2);
 
-	if (rvidHeader.interlaced == 2) {
+	/* if (rvidHeader.interlaced == 2) {
 		clear_screen();
-		printf("Is the video interlaced?\n");
-		printf("Video will be played twice the set frame rate, if so.\n");
+		printf("Interlace the video?\n");
+		printf("This will reduce HFR video size in half.\n");
 		printf("\n");
 		printf("Y: Yes\n");
 		printf("N: No\n");
@@ -196,7 +197,7 @@ int main(int argc, char **argv) {
 				break;
 			}
 		}
-	}
+	} */
 
 	if (rvidHeader.framesCompressed == 2) {
 		clear_screen();
@@ -241,6 +242,9 @@ int main(int argc, char **argv) {
 				lodepng::decode(image, width, height, framePath);
 				if (rvidHeader.vRes == 0) {
 					rvidHeader.vRes = (uint8_t)height;
+					if (rvidHeader.interlaced) {
+						rvidHeader.vRes /= 2;
+					}
 				}
 
 				bool paletteSet[256] = {false};
@@ -270,7 +274,24 @@ int main(int argc, char **argv) {
 					convertedFrame[i] = p;
 				}
 
-				compressedFrame = lzssCompress((unsigned char*)convertedFrame, 0x100*rvidHeader.vRes);
+				if (rvidHeader.interlaced) {
+					static bool bottomField = false;
+					int f = bottomField ? 1 : 0;
+					int x = 0;
+					for(int i = 0; i < 256*rvidHeader.vRes; i++) {
+						halvedFrame[i] = convertedFrame[(256*f)+x];
+						x++;
+						if (x == 256) {
+							f += 2;
+							x = 0;
+						}
+					}
+					bottomField = !bottomField;
+
+					compressedFrame = lzssCompress((unsigned char*)halvedFrame, 0x100*rvidHeader.vRes);
+				} else {
+					compressedFrame = lzssCompress((unsigned char*)convertedFrame, 0x100*rvidHeader.vRes);
+				}
 
 				if ((i % 500) == 0) printf("%i/%i\n", i, foundFrames);
 
@@ -299,6 +320,9 @@ int main(int argc, char **argv) {
 			unsigned width, height;
 			lodepng::decode(image, width, height, framePath);
 			rvidHeader.vRes = (uint8_t)height;
+			if (rvidHeader.interlaced) {
+				rvidHeader.vRes /= 2;
+			}
 		}
 
 		rvidHeader.framesOffset = 0x200;
@@ -387,11 +411,26 @@ int main(int argc, char **argv) {
 				convertedFrame[i] = p;
 			}
 
+			if (rvidHeader.interlaced) {
+				static bool bottomField = false;
+				int f = bottomField ? 1 : 0;
+				int x = 0;
+				for(int i = 0; i < 256*rvidHeader.vRes; i++) {
+					halvedFrame[i] = convertedFrame[(256*f)+x];
+					x++;
+					if (x == 256) {
+						f += 2;
+						x = 0;
+					}
+				}
+				bottomField = !bottomField;
+			}
+
 			if ((i % 500) == 0) printf("%i/%i\n", i, foundFrames);
 
 			// Save current frame to a file
 			fwrite(palette, 2, 256, videoOutput);
-			fwrite(convertedFrame, 1, 0x100*rvidHeader.vRes, videoOutput);
+			fwrite(rvidHeader.interlaced ? halvedFrame : convertedFrame, 1, 0x100*rvidHeader.vRes, videoOutput);
 		} else {
 			break;
 		}
