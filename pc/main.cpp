@@ -264,7 +264,8 @@ int main(int argc, char **argv) {
 
 		while (access("rvidFrames/256colors", F_OK) != 0) {
 			clear_screen();
-			printf("Ensure ImageMagick is installed, then open \"Process Frames.bat\".\n");
+			printf("Ensure ImageMagick is installed (with application directory added to system path),\n");
+			printf("then open \"Process Frames.bat\".\n\n");
 			printf("When the processing is done, press the \"A\" key.\n");
 
 			while (1) {
