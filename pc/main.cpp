@@ -131,6 +131,8 @@ int main(int argc, char **argv) {
 			printf("1: 8000hz\n");
 			printf("2: 11025hz\n");
 			printf("3: 16000hz\n");
+			printf("4: 22050hz\n");
+			printf("5: 32000hz\n");
 
 			while (1) {
 				if (GetKeyState('0') & 0x8000) {
@@ -149,6 +151,16 @@ int main(int argc, char **argv) {
 				}
 				if (GetKeyState('3') & 0x8000) {
 					rvidHeader.sampleRate = 16000;
+					rvidHeader.hasSound = 1;
+					break;
+				}
+				if (GetKeyState('4') & 0x8000) {
+					rvidHeader.sampleRate = 22050;
+					rvidHeader.hasSound = 1;
+					break;
+				}
+				if (GetKeyState('5') & 0x8000) {
+					rvidHeader.sampleRate = 32000;
 					rvidHeader.hasSound = 1;
 					break;
 				}
