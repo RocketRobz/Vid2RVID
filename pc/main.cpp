@@ -102,11 +102,11 @@ int main(int argc, char **argv) {
 
 	printf(titleText);
 	printf("\n");
-	printf("A: Convert\n");
+	printf("Press ENTER to convert\n");
 	//printf("E: Extract raw frames from source.rvid\n");
 
 	while (1) {
-		if (GetKeyState('A') & 0x8000) {
+		if (GetKeyState(VK_RETURN) & 0x8000) {
 			break;
 		}
 		/*if (GetKeyState('E') & 0x8000) {
@@ -114,6 +114,7 @@ int main(int argc, char **argv) {
 			return 0;
 			break;
 		}*/
+		Sleep(10);
 	}
 
 	CIniFile info( "rvidFrames/info.ini" );
@@ -164,6 +165,7 @@ int main(int argc, char **argv) {
 					rvidHeader.hasSound = 1;
 					break;
 				}
+				Sleep(10);
 			}
 		}
 	}
@@ -234,6 +236,7 @@ int main(int argc, char **argv) {
 				rvidHeader.framesCompressed = 0;
 				break;
 			}
+			Sleep(10);
 		}
 	}
 
@@ -266,12 +269,13 @@ int main(int argc, char **argv) {
 			clear_screen();
 			printf("Ensure ImageMagick is installed (with application directory added to system path),\n");
 			printf("then open \"Process Frames.bat\".\n\n");
-			printf("When the processing is done, press the \"A\" key.\n");
+			printf("When the processing is done, press ENTER.\n");
 
 			while (1) {
-				if (GetKeyState('A') & 0x8000) {
+				if (GetKeyState(VK_RETURN) & 0x8000) {
 					break;
 				}
+				Sleep(10);
 			}
 		}
 	}
