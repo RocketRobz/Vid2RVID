@@ -189,7 +189,11 @@ int main(int argc, char **argv) {
 	rvidHeader.fps = info.GetInt("RVID", "FPS", 24);
 	rvidHeader.vRes = 0;
 	rvidHeader.interlaced = (rvidHeader.fps > 30) ? 1 : 0;
-	rvidHeader.framesCompressed = info.GetInt("RVID", "COMPRESSED", 2);
+	if (rvidHeader.fps > 25) {
+		rvidHeader.framesCompressed = 0;
+	} else {
+		rvidHeader.framesCompressed = info.GetInt("RVID", "COMPRESSED", 2);
+	}
 
 	/* if (rvidHeader.interlaced == 2) {
 		clear_screen();
@@ -215,7 +219,7 @@ int main(int argc, char **argv) {
 		clear_screen();
 		printf("Compress the video frames?\n");
 		printf("Video quality will not be affected.\n");
-		printf("Recommended if your video is 24FPS or less.\n");
+		printf("Recommended if your video is 25FPS or less.\n");
 		printf("Depending on how may frames you have, this may take a while.\n");
 		printf("\n");
 		printf("Y: Yes\n");
