@@ -70,6 +70,7 @@ typedef struct rvidHeaderInfo {
 } rvidHeaderInfo;
 
 rvidHeaderInfo rvidHeader;
+const char* framesFolder = "rvidFrames";
 
 #define titleText "Vid2RVID v1.4\nby Rocket Robz\n"
 
@@ -102,6 +103,29 @@ int main(int argc, char **argv) {
 
 	printf(titleText);
 	printf("\n");
+	printf("Path of video frames: \"");
+	if (argc >= 2) {
+		framesFolder = argv[1];
+	}
+	printf(framesFolder);
+	printf("\"");
+	const bool folderFound = (access(framesFolder, F_OK) == 0);
+	if (!folderFound) {
+		printf(" not found");
+	}
+	printf("\n\n");
+	if (!folderFound) {
+		printf("Press ESC to exit\n");
+
+		while (1) {
+			if (GetKeyState(VK_ESCAPE) & 0x8000) {
+				break;
+			}
+			Sleep(10);
+		}
+
+		return 0;
+	}
 	printf("Press ENTER to convert\n");
 	//printf("E: Extract raw frames from source.rvid\n");
 
@@ -117,9 +141,13 @@ int main(int argc, char **argv) {
 		Sleep(10);
 	}
 
-	CIniFile info( "rvidFrames/info.ini" );
+	char infoIniPath[256];
+	sprintf(infoIniPath, "%s/info.ini", framesFolder);
+	CIniFile info(infoIniPath);
 
-	if ((info.GetInt("RVID", "HAS_SOUND", 1) == 1) && (access("rvidFrames/sound.raw.pcm", F_OK) == 0)) {
+	char soundPath[256];
+	sprintf(soundPath, "%s/sound.raw.pcm", framesFolder);
+	if ((info.GetInt("RVID", "HAS_SOUND", 1) == 1) && (access(soundPath, F_OK) == 0)) {
 		rvidHeader.sampleRate = info.GetInt("RVID", "AUDIO_HZ", 0);
 		if (rvidHeader.sampleRate > 0) {
 			rvidHeader.hasSound = 1;
@@ -179,7 +207,7 @@ int main(int argc, char **argv) {
 	if (foundFrames == -1) {
 		while (1) {
 			foundFrames++;
-			snprintf(framePath, sizeof(framePath), "rvidFrames/frame%i.png", foundFrames);
+			sprintf(framePath, "%s/frame%i.png", framesFolder, foundFrames);
 			if (access(framePath, F_OK) != 0) break;
 		}
 		foundFrames--;
@@ -244,11 +272,14 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	if (access("rvidFrames/256colors", F_OK) != 0) {
+	char flagPath[256];
+	sprintf(flagPath, "%s/256colors", framesFolder);
+	if (access(flagPath, F_OK) != 0) {
 		if (access("Process Frames.bat", F_OK) != 0) {
 			const uint16_t newLine = 0x0A0D;
 			const char* line1 = "@echo Processing frames, this may take a while...";
-			const char* line2 = "@cd rvidFrames";
+			const char* line2 = "@cd \"";
+			const char* line2End = "\"";
 			const char* line3 = "@magick mogrify -ordered-dither o8x8,32,64,32 -colors 256 *.png";
 			const char* line4 = "@mkdir 256colors";
 			const char* line5 = "@echo Done!";
@@ -257,7 +288,17 @@ int main(int argc, char **argv) {
 			FILE* batFile = fopen("Process Frames.bat", "wb");
 			fwrite(line1, 1, strlen(line1), batFile);
 			fwrite(&newLine, 2, 1, batFile);
+			if (framesFolder[1] == ':') {
+				char cdPathToDrive[7];
+				sprintf(cdPathToDrive, "@cd C:");
+				cdPathToDrive[4] = framesFolder[0];
+
+				fwrite(cdPathToDrive, 1, 6, batFile);
+				fwrite(&newLine, 2, 1, batFile);
+			}
 			fwrite(line2, 1, strlen(line2), batFile);
+			fwrite(framesFolder, 1, strlen(framesFolder), batFile);
+			fwrite(line2End, 1, strlen(line2End), batFile);
 			fwrite(&newLine, 2, 1, batFile);
 			fwrite(line3, 1, strlen(line3), batFile);
 			fwrite(&newLine, 2, 1, batFile);
@@ -269,7 +310,7 @@ int main(int argc, char **argv) {
 			fclose(batFile);
 		}
 
-		while (access("rvidFrames/256colors", F_OK) != 0) {
+		while (access(flagPath, F_OK) != 0) {
 			clear_screen();
 			printf("Ensure ImageMagick is installed (with application directory added to system path),\n");
 			printf("then open \"Process Frames.bat\".\n\n");
@@ -299,7 +340,7 @@ int main(int argc, char **argv) {
 		compressedFrameSizeTable = fopen("tempTable.bin", "wb");
 		compressedFrames = fopen("tempFrames.bin", "wb");
 		for (int i = 0; i <= foundFrames; i++) {
-			snprintf(framePath, sizeof(framePath), "rvidFrames/frame%i.png", i);
+			sprintf(framePath, "%s/frame%i.png", framesFolder, i);
 			frameInput = fopen(framePath, "rb");
 			if (frameInput) {
 				fclose(frameInput);
@@ -378,7 +419,7 @@ int main(int argc, char **argv) {
 		rvidHeader.framesOffset = 0x200+compressedFrameSizeTableSize;
 		rvidHeader.soundOffset = 0x200+compressedFrameSizeTableSize+compressedFramesSize;
 	} else {
-		snprintf(framePath, sizeof(framePath), "rvidFrames/frame%i.png", 0);
+		sprintf(framePath, "%s/frame%i.png", framesFolder, 0);
 		frameInput = fopen(framePath, "rb");
 		if (frameInput) {
 			fclose(frameInput);
@@ -507,11 +548,11 @@ int main(int argc, char **argv) {
 		clear_screen();
 		printf("Adding sound...\n");
 
-		uint32_t fsize = getFileSize("rvidFrames/sound.raw.pcm");
+		uint32_t fsize = getFileSize(soundPath);
 		uint32_t offset = 0;
 		int numr;
 
-		FILE* soundFile = fopen("rvidFrames/sound.raw.pcm", "rb");
+		FILE* soundFile = fopen(soundPath, "rb");
 		while (1)
 		{
 			// Add sound to .rvid file
