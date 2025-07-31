@@ -145,29 +145,217 @@ int main(int argc, char **argv) {
 	sprintf(infoIniPath, "%s/info.ini", framesFolder);
 	CIniFile info(infoIniPath);
 
+	clear_screen();
+	printf("Getting number of frames...\n");
+
+	char framePath[256];
+	// int foundFrames = info.GetInt("RVID", "FRAMES", -1);
+	int foundFrames = -1;
+
+	// if (foundFrames == -1) {
+		while (1) {
+			foundFrames++;
+			sprintf(framePath, "%s/frame%i.png", framesFolder, foundFrames);
+			if (access(framePath, F_OK) != 0) break;
+		}
+		foundFrames--;
+	// }
+
+	rvidHeader.formatString = 0x44495652;	// "RVID"
+	rvidHeader.ver = rvidVer;
+	rvidHeader.frames = foundFrames+1;
+	rvidHeader.fps = info.GetInt("RVID", "FPS", 0);
+
+	bool reviewInformation = false;
+	bool rvidFpsEntered = false;
+	bool rvidFpsLowerBy01Prcnt = false;
+
+	if (rvidHeader.fps == 0) {
+		int selection = 0;
+		bool ret = false;
+
+		while (1) {
+			clear_screen();
+			printf("What is the video's frame rate?\n");
+			printf((selection == 0) ? ">" : " ");
+			printf(" 14.9 FPS\n");
+			printf((selection == 1) ? ">" : " ");
+			printf(" 15 FPS\n");
+			printf((selection == 2) ? ">" : " ");
+			printf(" 23.9 FPS\n");
+			printf((selection == 3) ? ">" : " ");
+			printf(" 24 FPS\n");
+			printf((selection == 4) ? ">" : " ");
+			printf(" 25 FPS\n");
+			printf((selection == 5) ? ">" : " ");
+			printf(" 29.9 FPS\n");
+			printf((selection == 6) ? ">" : " ");
+			printf(" 30 FPS\n");
+			printf((selection == 7) ? ">" : " ");
+			printf(" 47.9 FPS\n");
+			printf((selection == 8) ? ">" : " ");
+			printf(" 48 FPS\n");
+			printf((selection == 9) ? ">" : " ");
+			printf(" 50 FPS\n");
+			printf((selection == 10) ? ">" : " ");
+			printf(" 59.9 FPS\n");
+			printf((selection == 11) ? ">" : " ");
+			printf(" 60 FPS\n");
+			Sleep(100);
+
+			while (1) {
+				if (GetKeyState(VK_UP) & 0x8000) {
+					selection--;
+					if (selection < 0) {
+						selection = 11;
+					}
+					break;
+				} else if (GetKeyState(VK_DOWN) & 0x8000) {
+					selection++;
+					if (selection > 11) {
+						selection = 0;
+					}
+					break;
+				}
+				if (GetKeyState(VK_RETURN) & 0x8000) {
+					switch (selection) {
+						case 0:
+							rvidHeader.fps = 15;
+							rvidFpsLowerBy01Prcnt = true;
+							break;
+						case 1:
+							rvidHeader.fps = 15;
+							break;
+						case 2:
+							rvidHeader.fps = 24;
+							rvidFpsLowerBy01Prcnt = true;
+							break;
+						case 3:
+							rvidHeader.fps = 24;
+							break;
+						case 4:
+							rvidHeader.fps = 25;
+							break;
+						case 5:
+							rvidHeader.fps = 30;
+							rvidFpsLowerBy01Prcnt = true;
+							break;
+						case 6:
+							rvidHeader.fps = 30;
+							break;
+						case 7:
+							rvidHeader.fps = 48;
+							rvidFpsLowerBy01Prcnt = true;
+							break;
+						case 8:
+							rvidHeader.fps = 48;
+							break;
+						case 9:
+							rvidHeader.fps = 50;
+							break;
+						case 10:
+							rvidHeader.fps = 60;
+							rvidFpsLowerBy01Prcnt = true;
+							break;
+						case 11:
+							rvidHeader.fps = 60;
+							break;
+					}
+					reviewInformation = true;
+					rvidFpsEntered = true;
+					ret = true;
+					break;
+				}
+				Sleep(10);
+			}
+			if (ret) {
+				break;
+			}
+		}
+		Sleep(10);
+	}
+
+	rvidHeader.vRes = 0;
+	rvidHeader.interlaced = (rvidHeader.fps > 30) ? 1 : 0;
+	if (rvidHeader.fps > 25) {
+		rvidHeader.framesCompressed = 0;
+	} else {
+		rvidHeader.framesCompressed = info.GetInt("RVID", "COMPRESSED", 2);
+	}
+
+	/* if (rvidHeader.interlaced == 2) {
+		clear_screen();
+		printf("Interlace the video?\n");
+		printf("This will reduce HFR video size in half.\n");
+		printf("\n");
+		printf("Y: Yes\n");
+		printf("N: No\n");
+
+		while (1) {
+			if (GetKeyState('Y') & 0x8000) {
+				rvidHeader.interlaced = 1;
+				break;
+			}
+			if (GetKeyState('N') & 0x8000) {
+				rvidHeader.interlaced = 0;
+				break;
+			}
+		}
+	} */
+
+	bool rvidCompressEntered = false;
+
+	if (rvidHeader.framesCompressed == 2) {
+		clear_screen();
+		printf("Compress the video frames?\n");
+		printf("Video quality will not be affected.\n");
+		printf("Recommended if your video is 25FPS or less.\n");
+		printf("Depending on how may frames you have, this may take a while.\n");
+		printf("\n");
+		printf("Y: Yes\n");
+		printf("N: No\n");
+		Sleep(100);
+
+		while (1) {
+			if (GetKeyState('Y') & 0x8000) {
+				rvidHeader.framesCompressed = 1;
+				break;
+			}
+			if (GetKeyState('N') & 0x8000) {
+				rvidHeader.framesCompressed = 0;
+				break;
+			}
+			Sleep(10);
+		}
+		reviewInformation = true;
+		rvidCompressEntered = true;
+		Sleep(10);
+	}
+
+	bool rvidSoundEntered = false;
+
 	char soundPath[256];
 	sprintf(soundPath, "%s/sound.raw.pcm", framesFolder);
-	if ((info.GetInt("RVID", "HAS_SOUND", 1) == 1) && (access(soundPath, F_OK) == 0)) {
+	if (access(soundPath, F_OK) == 0) {
 		rvidHeader.sampleRate = info.GetInt("RVID", "AUDIO_HZ", 0);
 		if (rvidHeader.sampleRate > 0) {
 			rvidHeader.hasSound = 1;
 		} else {
 			clear_screen();
-			printf("Sound file found!\n");
-			printf("\n");
-			printf("What is the sample rate?\n");
-			printf("0: Exclude sound\n");
+			printf("What is the audio sample rate?\n");
+			// printf("0: Exclude sound\n");
 			printf("1: 8000hz\n");
 			printf("2: 11025hz\n");
 			printf("3: 16000hz\n");
 			printf("4: 22050hz\n");
 			printf("5: 32000hz\n");
+			Sleep(100);
 
 			while (1) {
-				if (GetKeyState('0') & 0x8000) {
+				/* if (GetKeyState('0') & 0x8000) {
 					rvidHeader.hasSound = 0;
 					break;
-				}
+				} */
 				if (GetKeyState('1') & 0x8000) {
 					rvidHeader.sampleRate = 8000;
 					rvidHeader.hasSound = 1;
@@ -195,80 +383,68 @@ int main(int argc, char **argv) {
 				}
 				Sleep(10);
 			}
+			reviewInformation = true;
+			rvidSoundEntered = true;
+			Sleep(10);
 		}
 	}
 
-	clear_screen();
-	printf("Getting number of frames...\n");
-
-	char framePath[256];
-	int foundFrames = info.GetInt("RVID", "FRAMES", -1);
-
-	if (foundFrames == -1) {
-		while (1) {
-			foundFrames++;
-			sprintf(framePath, "%s/frame%i.png", framesFolder, foundFrames);
-			if (access(framePath, F_OK) != 0) break;
-		}
-		foundFrames--;
-	}
-
-	rvidHeader.formatString = 0x44495652;	// "RVID"
-	rvidHeader.ver = rvidVer;
-	rvidHeader.frames = foundFrames+1;
-	rvidHeader.fps = info.GetInt("RVID", "FPS", 24);
-	uint8_t rvidFps = rvidHeader.fps;
-	if (info.GetInt("RVID", "FPS_DECREASE_BY_0.1", 1) == 1) {
-		rvidHeader.fps += 0x80;
-	}
-	rvidHeader.vRes = 0;
-	rvidHeader.interlaced = (rvidFps > 30) ? 1 : 0;
-	if (rvidFps > 25) {
-		rvidHeader.framesCompressed = 0;
-	} else {
-		rvidHeader.framesCompressed = info.GetInt("RVID", "COMPRESSED", 2);
-	}
-
-	/* if (rvidHeader.interlaced == 2) {
+	if (reviewInformation) {
 		clear_screen();
-		printf("Interlace the video?\n");
-		printf("This will reduce HFR video size in half.\n");
+		printf("Is the entered information correct?\n");
+		if (rvidFpsEntered) {
+			printf("- Frame Rate: ");
+			if (rvidFpsLowerBy01Prcnt) {
+				printf("%i.9", rvidHeader.fps-1);
+			} else {
+				printf("%i", rvidHeader.fps);
+			}
+			printf(" FPS\n");
+		}
+		if (rvidCompressEntered) {
+			printf("- Compressed Frames: ");
+			printf(rvidHeader.framesCompressed ? "Yes" : "No");
+			printf("\n");
+		}
+		if (rvidSoundEntered) {
+			printf("- Audio Quality: %ihz\n", rvidHeader.sampleRate);
+		}
 		printf("\n");
-		printf("Y: Yes\n");
-		printf("N: No\n");
+		printf("Y: Yes, proceed\n");
+		printf("N: No, exit\n");
+		Sleep(100);
 
 		while (1) {
 			if (GetKeyState('Y') & 0x8000) {
-				rvidHeader.interlaced = 1;
 				break;
 			}
 			if (GetKeyState('N') & 0x8000) {
-				rvidHeader.interlaced = 0;
-				break;
-			}
-		}
-	} */
-
-	if (rvidHeader.framesCompressed == 2) {
-		clear_screen();
-		printf("Compress the video frames?\n");
-		printf("Video quality will not be affected.\n");
-		printf("Recommended if your video is 25FPS or less.\n");
-		printf("Depending on how may frames you have, this may take a while.\n");
-		printf("\n");
-		printf("Y: Yes\n");
-		printf("N: No\n");
-
-		while (1) {
-			if (GetKeyState('Y') & 0x8000) {
-				rvidHeader.framesCompressed = 1;
-				break;
-			}
-			if (GetKeyState('N') & 0x8000) {
-				rvidHeader.framesCompressed = 0;
-				break;
+				return 0;
 			}
 			Sleep(10);
+		}
+		Sleep(10);
+
+		if (rvidFpsEntered) {
+			info.SetInt("RVID", "FPS", rvidHeader.fps);
+			info.SetInt("RVID", "FPS_DECREASE_BY_0.1", rvidFpsLowerBy01Prcnt);
+		}
+		if (rvidCompressEntered) {
+			info.SetInt("RVID", "COMPRESSED", rvidHeader.framesCompressed);
+		}
+		if (rvidSoundEntered) {
+			info.SetInt("RVID", "AUDIO_HZ", rvidHeader.sampleRate);
+		}
+		info.SaveIniFileModified(infoIniPath);
+	}
+
+	if (rvidFpsEntered) {
+		if (rvidFpsLowerBy01Prcnt) {
+			rvidHeader.fps += 0x80;
+		}
+	} else {
+		if (info.GetInt("RVID", "FPS_DECREASE_BY_0.1", 1) == 1) {
+			rvidHeader.fps += 0x80;
 		}
 	}
 
@@ -315,6 +491,7 @@ int main(int argc, char **argv) {
 			printf("Ensure ImageMagick is installed (with application directory added to system path),\n");
 			printf("then open \"Process Frames.bat\".\n\n");
 			printf("When the processing is done, press ENTER.\n");
+			Sleep(100);
 
 			while (1) {
 				if (GetKeyState(VK_RETURN) & 0x8000) {
