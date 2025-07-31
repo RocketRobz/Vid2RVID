@@ -410,7 +410,7 @@ int main(int argc, char **argv) {
 			printf("- Audio Quality: %ihz\n", rvidHeader.sampleRate);
 		}
 		printf("\n");
-		printf("Y: Yes, proceed\n");
+		printf("Y: Yes, save & proceed\n");
 		printf("N: No, exit\n");
 		Sleep(100);
 
