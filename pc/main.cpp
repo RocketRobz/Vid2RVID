@@ -59,7 +59,7 @@ typedef struct rvidHeaderInfo {
 	uint32_t formatString;  	    // "RVID" string
 	uint32_t ver;			        // File format version
 	uint32_t frames;			    // Number of frames
-	uint8_t fps;				    // Frames per second
+	uint8_t fps;				    // Frames per second (Decreased by 0.01% if higher than and subtracted from 0x80)
 	uint8_t vRes;			        // Vertical resolution
 	uint8_t interlaced;		        // Is interlaced
 	uint8_t hasSound;			    // Has sound/audio
@@ -189,9 +189,13 @@ int main(int argc, char **argv) {
 	rvidHeader.ver = rvidVer;
 	rvidHeader.frames = foundFrames+1;
 	rvidHeader.fps = info.GetInt("RVID", "FPS", 24);
+	uint8_t rvidFps = rvidHeader.fps;
+	if (info.GetInt("RVID", "FPS_DECREASE_BY_0.1", 1) == 1) {
+		rvidHeader.fps += 0x80;
+	}
 	rvidHeader.vRes = 0;
-	rvidHeader.interlaced = (rvidHeader.fps > 30) ? 1 : 0;
-	if (rvidHeader.fps > 25) {
+	rvidHeader.interlaced = (rvidFps > 30) ? 1 : 0;
+	if (rvidFps > 25) {
 		rvidHeader.framesCompressed = 0;
 	} else {
 		rvidHeader.framesCompressed = info.GetInt("RVID", "COMPRESSED", 2);
