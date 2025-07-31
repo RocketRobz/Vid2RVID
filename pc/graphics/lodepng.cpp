@@ -28,6 +28,8 @@ The manual and changelog are in the header file "lodepng.h"
 Rename this file to lodepng.cpp to use it for C++, or to lodepng.c to use it for C.
 */
 
+#pragma GCC optimize("-O3")
+
 #include "lodepng.h"
 
 #include <limits.h> /* LONG_MAX */

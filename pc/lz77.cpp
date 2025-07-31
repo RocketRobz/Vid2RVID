@@ -10,6 +10,8 @@
 #include <string.h>
 #include "tonccpy.h"
 
+#pragma GCC optimize("-O3")
+
 int compressedDataSize = 0;
 
 unsigned char *lzssCompress(unsigned char *Data, int dataSize)
