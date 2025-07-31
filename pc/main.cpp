@@ -660,7 +660,7 @@ int main(int argc, char **argv) {
 		}
 		fclose(compressedFrames);
 	} else for (int i = 0; i <= foundFrames; i++) {
-		snprintf(framePath, sizeof(framePath), "rvidFrames/frame%i.png", i);
+		sprintf(framePath, "%s/frame%i.png", framesFolder, i);
 		frameInput = fopen(framePath, "rb");
 		if (frameInput) {
 			fclose(frameInput);
