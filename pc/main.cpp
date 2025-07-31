@@ -103,7 +103,7 @@ int main(int argc, char **argv) {
 
 	printf(titleText);
 	printf("\n");
-	printf("Path of video frames: \"");
+	printf("Path of video frames:\n\"");
 	if (argc >= 2) {
 		framesFolder = argv[1];
 	}
@@ -160,6 +160,24 @@ int main(int argc, char **argv) {
 		}
 		foundFrames--;
 	// }
+
+	if (foundFrames == -1) {
+		clear_screen();
+		printf("No frames have been found. Please extract the frames from a video file to the path here:\n\"");
+		printf(framesFolder);
+		printf("\"\n");
+		printf("\n");
+		printf("Press ESC to exit\n");
+
+		while (1) {
+			if (GetKeyState(VK_ESCAPE) & 0x8000) {
+				break;
+			}
+			Sleep(10);
+		}
+
+		return 0;
+	}
 
 	rvidHeader.formatString = 0x44495652;	// "RVID"
 	rvidHeader.ver = rvidVer;
