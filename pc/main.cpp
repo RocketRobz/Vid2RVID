@@ -614,7 +614,7 @@ int main(int argc, char **argv) {
 		rvidHeader.soundOffset = 0x200+((0x200+(0x100*rvidHeader.vRes))*rvidHeader.frames);
 	}
 
-	FILE* videoOutput = fopen("new.rvid", "wb");
+	FILE* videoOutput = fopen("output.rvid", "wb");
 
 	// Write header
 	memcpy(headerToFile, &rvidHeader, sizeof(rvidHeaderInfo));
