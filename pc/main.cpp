@@ -191,7 +191,7 @@ int main(int argc, char **argv) {
 		clear_screen();
 		printf("What is the video's frame rate?\n");
 		printf("1: 23.976 FPS\n");
-		printf("2: 29.98 FPS\n");
+		printf("2: 29.97 FPS\n");
 		printf("3: 47.952 FPS\n");
 		printf("4: 59.94 FPS\n");
 		Sleep(100);
@@ -344,7 +344,7 @@ int main(int argc, char **argv) {
 					printf("23.976");
 					break;
 				case 30:
-					printf("29.98");
+					printf("29.97");
 					break;
 				case 48:
 					printf("47.952");
