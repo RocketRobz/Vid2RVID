@@ -339,10 +339,19 @@ int main(int argc, char **argv) {
 		printf("Is the entered information correct?\n");
 		if (rvidFpsEntered) {
 			printf("- Frame Rate: ");
-			if (rvidFpsLowerBy01Prcnt) {
-				printf("%i.9", rvidHeader.fps-1);
-			} else {
-				printf("%i", rvidHeader.fps);
+			switch (rvidHeader.fps) {
+				case 24:
+					printf("23.976");
+					break;
+				case 30:
+					printf("29.98");
+					break;
+				case 48:
+					printf("47.952");
+					break;
+				case 60:
+					printf("59.94");
+					break;
 			}
 			printf(" FPS\n");
 		}
