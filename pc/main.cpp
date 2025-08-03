@@ -186,110 +186,37 @@ int main(int argc, char **argv) {
 
 	bool reviewInformation = false;
 	bool rvidFpsEntered = false;
-	bool rvidFpsLowerBy01Prcnt = false;
 
 	if (rvidHeader.fps == 0) {
-		int selection = 0;
-		bool ret = false;
+		clear_screen();
+		printf("What is the video's frame rate?\n");
+		printf("1: 23.976 FPS\n");
+		printf("2: 29.98 FPS\n");
+		printf("3: 47.952 FPS\n");
+		printf("4: 59.94 FPS\n");
+		Sleep(100);
 
 		while (1) {
-			clear_screen();
-			printf("What is the video's frame rate?\n");
-			printf((selection == 0) ? ">" : " ");
-			printf(" 14.9 FPS\n");
-			printf((selection == 1) ? ">" : " ");
-			printf(" 15 FPS\n");
-			printf((selection == 2) ? ">" : " ");
-			printf(" 23.9 FPS\n");
-			printf((selection == 3) ? ">" : " ");
-			printf(" 24 FPS\n");
-			printf((selection == 4) ? ">" : " ");
-			printf(" 25 FPS\n");
-			printf((selection == 5) ? ">" : " ");
-			printf(" 29.9 FPS\n");
-			printf((selection == 6) ? ">" : " ");
-			printf(" 30 FPS\n");
-			printf((selection == 7) ? ">" : " ");
-			printf(" 47.9 FPS\n");
-			printf((selection == 8) ? ">" : " ");
-			printf(" 48 FPS\n");
-			printf((selection == 9) ? ">" : " ");
-			printf(" 50 FPS\n");
-			printf((selection == 10) ? ">" : " ");
-			printf(" 59.9 FPS\n");
-			printf((selection == 11) ? ">" : " ");
-			printf(" 60 FPS\n");
-			Sleep(100);
-
-			while (1) {
-				if (GetKeyState(VK_UP) & 0x8000) {
-					selection--;
-					if (selection < 0) {
-						selection = 11;
-					}
-					break;
-				} else if (GetKeyState(VK_DOWN) & 0x8000) {
-					selection++;
-					if (selection > 11) {
-						selection = 0;
-					}
-					break;
-				}
-				if (GetKeyState(VK_RETURN) & 0x8000) {
-					switch (selection) {
-						case 0:
-							rvidHeader.fps = 15;
-							rvidFpsLowerBy01Prcnt = true;
-							break;
-						case 1:
-							rvidHeader.fps = 15;
-							break;
-						case 2:
-							rvidHeader.fps = 24;
-							rvidFpsLowerBy01Prcnt = true;
-							break;
-						case 3:
-							rvidHeader.fps = 24;
-							break;
-						case 4:
-							rvidHeader.fps = 25;
-							break;
-						case 5:
-							rvidHeader.fps = 30;
-							rvidFpsLowerBy01Prcnt = true;
-							break;
-						case 6:
-							rvidHeader.fps = 30;
-							break;
-						case 7:
-							rvidHeader.fps = 48;
-							rvidFpsLowerBy01Prcnt = true;
-							break;
-						case 8:
-							rvidHeader.fps = 48;
-							break;
-						case 9:
-							rvidHeader.fps = 50;
-							break;
-						case 10:
-							rvidHeader.fps = 60;
-							rvidFpsLowerBy01Prcnt = true;
-							break;
-						case 11:
-							rvidHeader.fps = 60;
-							break;
-					}
-					reviewInformation = true;
-					rvidFpsEntered = true;
-					ret = true;
-					break;
-				}
-				Sleep(10);
-			}
-			if (ret) {
+			if (GetKeyState('1') & 0x8000) {
+				rvidHeader.fps = 24;
 				break;
 			}
+			if (GetKeyState('2') & 0x8000) {
+				rvidHeader.fps = 30;
+				break;
+			}
+			if (GetKeyState('3') & 0x8000) {
+				rvidHeader.fps = 48;
+				break;
+			}
+			if (GetKeyState('4') & 0x8000) {
+				rvidHeader.fps = 60;
+				break;
+			}
+			Sleep(10);
 		}
+		reviewInformation = true;
+		rvidFpsEntered = true;
 		Sleep(10);
 	}
 
@@ -445,7 +372,6 @@ int main(int argc, char **argv) {
 
 		if (rvidFpsEntered) {
 			info.SetInt("RVID", "FPS", rvidHeader.fps);
-			info.SetInt("RVID", "FPS_DECREASE_BY_0.1", rvidFpsLowerBy01Prcnt);
 		}
 		if (rvidCompressEntered) {
 			info.SetInt("RVID", "COMPRESSED", rvidHeader.framesCompressed);
@@ -454,16 +380,6 @@ int main(int argc, char **argv) {
 			info.SetInt("RVID", "AUDIO_HZ", rvidHeader.sampleRate);
 		}
 		info.SaveIniFileModified(infoIniPath);
-	}
-
-	if (rvidFpsEntered) {
-		if (rvidFpsLowerBy01Prcnt) {
-			rvidHeader.fps += 0x80;
-		}
-	} else {
-		if (info.GetInt("RVID", "FPS_DECREASE_BY_0.1", 1) == 1) {
-			rvidHeader.fps += 0x80;
-		}
 	}
 
 	char flagPath[256];
