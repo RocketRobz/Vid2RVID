@@ -254,7 +254,7 @@ int main(int argc, char **argv) {
 		clear_screen();
 		printf("Compress the video frames?\n");
 		printf("Video quality will not be affected.\n");
-		printf("Recommended if your video is 25FPS or less.\n");
+		printf("Recommended if your video is 24FPS or less.\n");
 		printf("Depending on how may frames you have, this may take a while.\n");
 		printf("\n");
 		printf("Y: Yes\n");
