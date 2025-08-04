@@ -252,9 +252,8 @@ int main(int argc, char **argv) {
 
 	if (rvidHeader.framesCompressed == 2) {
 		clear_screen();
-		printf("Compress the video frames?\n");
+		printf("Compress the video frames to save some space?\n");
 		printf("Video quality will not be affected.\n");
-		printf("Recommended if your video is 24FPS or less.\n");
 		printf("Depending on how may frames you have, this may take a while.\n");
 		printf("\n");
 		printf("Y: Yes\n");
