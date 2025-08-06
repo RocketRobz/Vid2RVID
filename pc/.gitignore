@@ -4,3 +4,5 @@ bin
 Thumbs.db
 *.d
 desktop.ini
+*.depend
+*.layout

@@ -59,10 +59,10 @@ typedef struct rvidHeaderInfo {
 	uint32_t formatString;  	    // "RVID" string
 	uint32_t ver;			        // File format version
 	uint32_t frames;			    // Number of frames
-	uint8_t fps;				    // Frames per second (Decreased by 0.01% if higher than and subtracted from 0x80)
+	uint8_t fps;				    // Frames per second
 	uint8_t vRes;			        // Vertical resolution
 	uint8_t interlaced;		        // Is interlaced
-	uint8_t hasSound;			    // Has sound/audio
+	uint8_t dualScreen;		        // Is dual screen video
 	uint16_t sampleRate;		    // Audio sample rate
 	uint16_t framesCompressed;	    // Frames are compressed
 	uint32_t framesOffset;		    // Offset of first frame
@@ -151,15 +151,14 @@ int main(int argc, char **argv) {
 	char framePath[256];
 	// int foundFrames = info.GetInt("RVID", "FRAMES", -1);
 	int foundFrames = -1;
+	int foundBottomFrames = -1;
 
-	// if (foundFrames == -1) {
-		while (1) {
-			foundFrames++;
-			sprintf(framePath, "%s/frame%i.png", framesFolder, foundFrames);
-			if (access(framePath, F_OK) != 0) break;
-		}
-		foundFrames--;
-	// }
+	while (1) {
+		foundFrames++;
+		sprintf(framePath, "%s/frame%i.png", framesFolder, foundFrames);
+		if (access(framePath, F_OK) != 0) break;
+	}
+	foundFrames--;
 
 	if (foundFrames == -1) {
 		clear_screen();
@@ -179,6 +178,35 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 
+	while (1) {
+		foundBottomFrames++;
+		sprintf(framePath, "%s/bottom/frame%i.png", framesFolder, foundBottomFrames);
+		if (access(framePath, F_OK) != 0) break;
+	}
+	foundBottomFrames--;
+
+	if (foundBottomFrames != -1) {
+		if (foundBottomFrames != foundFrames) {
+			clear_screen();
+			printf("The amount of top screen and bottom screen frames do not match.\n");
+			printf("Make sure they're the same amount.\n");
+			printf("\n");
+			printf("Press ESC to exit\n");
+
+			while (1) {
+				if (GetKeyState(VK_ESCAPE) & 0x8000) {
+					break;
+				}
+				Sleep(10);
+			}
+
+			return 0;
+		}
+		rvidHeader.dualScreen = 1;
+	} else {
+		rvidHeader.dualScreen = 0;
+	}
+
 	rvidHeader.formatString = 0x44495652;	// "RVID"
 	rvidHeader.ver = rvidVer;
 	rvidHeader.frames = foundFrames+1;
@@ -190,28 +218,42 @@ int main(int argc, char **argv) {
 	if (rvidHeader.fps == 0) {
 		clear_screen();
 		printf("What is the video's frame rate?\n");
-		printf("1: 23.976 FPS\n");
-		printf("2: 29.97 FPS\n");
-		printf("3: 47.952 FPS\n");
-		printf("4: 59.94 FPS\n");
+		printf("1: 11.988 FPS\n");
+		printf("2: 14.98 FPS\n");
+		printf("3: 23.976 FPS\n");
+		printf("4: 29.97 FPS\n");
+		if (!rvidHeader.dualScreen) {
+			printf("5: 47.952 FPS\n");
+			printf("6: 59.94 FPS\n");
+		}
 		Sleep(100);
 
 		while (1) {
 			if (GetKeyState('1') & 0x8000) {
-				rvidHeader.fps = 24;
+				rvidHeader.fps = 12;
 				break;
 			}
 			if (GetKeyState('2') & 0x8000) {
-				rvidHeader.fps = 30;
+				rvidHeader.fps = 15;
 				break;
 			}
 			if (GetKeyState('3') & 0x8000) {
-				rvidHeader.fps = 48;
+				rvidHeader.fps = 24;
 				break;
 			}
 			if (GetKeyState('4') & 0x8000) {
-				rvidHeader.fps = 60;
+				rvidHeader.fps = 30;
 				break;
+			}
+			if (!rvidHeader.dualScreen) {
+				if (GetKeyState('5') & 0x8000) {
+					rvidHeader.fps = 48;
+					break;
+				}
+				if (GetKeyState('6') & 0x8000) {
+					rvidHeader.fps = 60;
+					break;
+				}
 			}
 			Sleep(10);
 		}
@@ -221,8 +263,8 @@ int main(int argc, char **argv) {
 	}
 
 	rvidHeader.vRes = 0;
-	rvidHeader.interlaced = (rvidHeader.fps > 30) ? 1 : 0;
-	if (rvidHeader.fps > 25) {
+	rvidHeader.interlaced = (rvidHeader.fps > (rvidHeader.dualScreen ? 15 : 30)) ? 1 : 0;
+	if (rvidHeader.fps > (rvidHeader.dualScreen ? 12 : 24)) {
 		rvidHeader.framesCompressed = 0;
 	} else {
 		rvidHeader.framesCompressed = info.GetInt("RVID", "COMPRESSED", 2);
@@ -280,11 +322,10 @@ int main(int argc, char **argv) {
 
 	char soundPath[256];
 	sprintf(soundPath, "%s/sound.raw.pcm", framesFolder);
+	bool soundFound = false;
 	if (access(soundPath, F_OK) == 0) {
 		rvidHeader.sampleRate = info.GetInt("RVID", "AUDIO_HZ", 0);
-		if (rvidHeader.sampleRate > 0) {
-			rvidHeader.hasSound = 1;
-		} else {
+		if (rvidHeader.sampleRate == 0) {
 			clear_screen();
 			printf("What is the audio sample rate?\n");
 			// printf("0: Exclude sound\n");
@@ -302,27 +343,22 @@ int main(int argc, char **argv) {
 				} */
 				if (GetKeyState('1') & 0x8000) {
 					rvidHeader.sampleRate = 8000;
-					rvidHeader.hasSound = 1;
 					break;
 				}
 				if (GetKeyState('2') & 0x8000) {
 					rvidHeader.sampleRate = 11025;
-					rvidHeader.hasSound = 1;
 					break;
 				}
 				if (GetKeyState('3') & 0x8000) {
 					rvidHeader.sampleRate = 16000;
-					rvidHeader.hasSound = 1;
 					break;
 				}
 				if (GetKeyState('4') & 0x8000) {
 					rvidHeader.sampleRate = 22050;
-					rvidHeader.hasSound = 1;
 					break;
 				}
 				if (GetKeyState('5') & 0x8000) {
 					rvidHeader.sampleRate = 32000;
-					rvidHeader.hasSound = 1;
 					break;
 				}
 				Sleep(10);
@@ -331,6 +367,9 @@ int main(int argc, char **argv) {
 			rvidSoundEntered = true;
 			Sleep(10);
 		}
+		soundFound = true;
+	} else {
+		rvidHeader.sampleRate = 0;
 	}
 
 	if (reviewInformation) {
@@ -448,8 +487,6 @@ int main(int argc, char **argv) {
 		remove("Process Frames.bat");
 	}
 
-	FILE* frameInput;
-
 	FILE* compressedFrameSizeTable;
 	FILE* compressedFrames;
 	if (rvidHeader.framesCompressed == 1) {
@@ -460,75 +497,78 @@ int main(int argc, char **argv) {
 		compressedFrames = fopen("tempFrames.bin", "wb");
 		for (int i = 0; i <= foundFrames; i++) {
 			sprintf(framePath, "%s/frame%i.png", framesFolder, i);
-			frameInput = fopen(framePath, "rb");
-			if (frameInput) {
-				fclose(frameInput);
+			if (access(framePath, F_OK) == 0) {
+				for (int b = 0; b < rvidHeader.dualScreen+1; b++) {
+					std::vector<unsigned char> image;
+					unsigned width, height;
+					lodepng::decode(image, width, height, framePath);
+					if (rvidHeader.vRes == 0) {
+						rvidHeader.vRes = (uint8_t)height;
+						if (rvidHeader.interlaced) {
+							rvidHeader.vRes /= 2;
+						}
+					}
 
-				std::vector<unsigned char> image;
-				unsigned width, height;
-				lodepng::decode(image, width, height, framePath);
-				if (rvidHeader.vRes == 0) {
-					rvidHeader.vRes = (uint8_t)height;
+					bool paletteSet[256] = {false};
+					uint16_t palette[256] = {0};
+					for(unsigned i=0;i<image.size()/4;i++) {
+						const uint16_t green = (image[(i*4)+1] >> 2) << 5;
+						uint16_t color = image[i*4] >> 3 | (image[(i*4)+2] >> 3) << 10;
+						if (green & BIT(5)) {
+							color |= BIT(15);
+						}
+						for (int gBit = 6; gBit <= 10; gBit++) {
+							if (green & BIT(gBit)) {
+								color |= BIT(gBit-1);
+							}
+						}
+
+						int p = 0;
+						for (p = 0; p < 256; p++) {
+							if (!paletteSet[p]) {
+								palette[p] = color;
+								paletteSet[p] = true;
+								break;
+							} else if (palette[p] == color) {
+								break;
+							}
+						}
+						convertedFrame[i] = p;
+					}
+
 					if (rvidHeader.interlaced) {
-						rvidHeader.vRes /= 2;
+						static bool bottomField = false;
+						int f = bottomField ? 1 : 0;
+						int x = 0;
+						for(int i = 0; i < 256*rvidHeader.vRes; i++) {
+							halvedFrame[i] = convertedFrame[(256*f)+x];
+							x++;
+							if (x == 256) {
+								f += 2;
+								x = 0;
+							}
+						}
+						bottomField = !bottomField;
+
+						compressedFrame = lzssCompress((unsigned char*)halvedFrame, 0x100*rvidHeader.vRes);
+					} else {
+						compressedFrame = lzssCompress((unsigned char*)convertedFrame, 0x100*rvidHeader.vRes);
+					}
+
+					if ((b == 0) && ((i % 500) == 0)) printf("%i/%i\n", i, foundFrames);
+
+					// Save current frame to temp file
+					fwrite(palette, 2, 256, compressedFrames);
+					fwrite(compressedFrame, 1, compressedDataSize, compressedFrames);
+					fwrite(&compressedDataSize, 4, 1, compressedFrameSizeTable);
+					compressedFrameSizeTableSize += 4;
+					compressedFramesSize += 0x200;
+					compressedFramesSize += compressedDataSize;
+
+					if ((b == 0) && rvidHeader.dualScreen) {
+						sprintf(framePath, "%s/bottom/frame%i.png", framesFolder, i);
 					}
 				}
-
-				bool paletteSet[256] = {false};
-				uint16_t palette[256] = {0};
-				for(unsigned i=0;i<image.size()/4;i++) {
-					const uint16_t green = (image[(i*4)+1] >> 2) << 5;
-					uint16_t color = image[i*4] >> 3 | (image[(i*4)+2] >> 3) << 10;
-					if (green & BIT(5)) {
-						color |= BIT(15);
-					}
-					for (int gBit = 6; gBit <= 10; gBit++) {
-						if (green & BIT(gBit)) {
-							color |= BIT(gBit-1);
-						}
-					}
-
-					int p = 0;
-					for (p = 0; p < 256; p++) {
-						if (!paletteSet[p]) {
-							palette[p] = color;
-							paletteSet[p] = true;
-							break;
-						} else if (palette[p] == color) {
-							break;
-						}
-					}
-					convertedFrame[i] = p;
-				}
-
-				if (rvidHeader.interlaced) {
-					static bool bottomField = false;
-					int f = bottomField ? 1 : 0;
-					int x = 0;
-					for(int i = 0; i < 256*rvidHeader.vRes; i++) {
-						halvedFrame[i] = convertedFrame[(256*f)+x];
-						x++;
-						if (x == 256) {
-							f += 2;
-							x = 0;
-						}
-					}
-					bottomField = !bottomField;
-
-					compressedFrame = lzssCompress((unsigned char*)halvedFrame, 0x100*rvidHeader.vRes);
-				} else {
-					compressedFrame = lzssCompress((unsigned char*)convertedFrame, 0x100*rvidHeader.vRes);
-				}
-
-				if ((i % 500) == 0) printf("%i/%i\n", i, foundFrames);
-
-				// Save current frame to temp file
-				fwrite(palette, 2, 256, compressedFrames);
-				fwrite(compressedFrame, 1, compressedDataSize, compressedFrames);
-				fwrite(&compressedDataSize, 4, 1, compressedFrameSizeTable);
-				compressedFrameSizeTableSize += 4;
-				compressedFramesSize += 0x200;
-				compressedFramesSize += compressedDataSize;
 			} else {
 				break;
 			}
@@ -536,13 +576,10 @@ int main(int argc, char **argv) {
 		fclose(compressedFrames);
 		fclose(compressedFrameSizeTable);
 		rvidHeader.framesOffset = 0x200+compressedFrameSizeTableSize;
-		rvidHeader.soundOffset = 0x200+compressedFrameSizeTableSize+compressedFramesSize;
+		rvidHeader.soundOffset = soundFound ? 0x200+compressedFrameSizeTableSize+compressedFramesSize : 0;
 	} else {
 		sprintf(framePath, "%s/frame%i.png", framesFolder, 0);
-		frameInput = fopen(framePath, "rb");
-		if (frameInput) {
-			fclose(frameInput);
-
+		if (access(framePath, F_OK) == 0) {
 			std::vector<unsigned char> image;
 			unsigned width, height;
 			lodepng::decode(image, width, height, framePath);
@@ -553,7 +590,7 @@ int main(int argc, char **argv) {
 		}
 
 		rvidHeader.framesOffset = 0x200;
-		rvidHeader.soundOffset = 0x200+((0x200+(0x100*rvidHeader.vRes))*rvidHeader.frames);
+		rvidHeader.soundOffset = soundFound ? 0x200+((0x200+(0x100*rvidHeader.vRes))*rvidHeader.frames) : 0;
 	}
 
 	FILE* videoOutput = fopen("output.rvid", "wb");
@@ -603,67 +640,70 @@ int main(int argc, char **argv) {
 		fclose(compressedFrames);
 	} else for (int i = 0; i <= foundFrames; i++) {
 		sprintf(framePath, "%s/frame%i.png", framesFolder, i);
-		frameInput = fopen(framePath, "rb");
-		if (frameInput) {
-			fclose(frameInput);
+		if (access(framePath, F_OK) == 0) {
+			for (int b = 0; b < rvidHeader.dualScreen+1; b++) {
+				std::vector<unsigned char> image;
+				unsigned width, height;
+				lodepng::decode(image, width, height, framePath);
 
-			std::vector<unsigned char> image;
-			unsigned width, height;
-			lodepng::decode(image, width, height, framePath);
-
-			bool paletteSet[256] = {false};
-			uint16_t palette[256] = {0};
-			for(unsigned i=0;i<image.size()/4;i++) {
-				const uint16_t green = (image[(i*4)+1] >> 2) << 5;
-				uint16_t color = image[i*4] >> 3 | (image[(i*4)+2] >> 3) << 10;
-				if (green & BIT(5)) {
-					color |= BIT(15);
-				}
-				for (int gBit = 6; gBit <= 10; gBit++) {
-					if (green & BIT(gBit)) {
-						color |= BIT(gBit-1);
+				bool paletteSet[256] = {false};
+				uint16_t palette[256] = {0};
+				for(unsigned i=0;i<image.size()/4;i++) {
+					const uint16_t green = (image[(i*4)+1] >> 2) << 5;
+					uint16_t color = image[i*4] >> 3 | (image[(i*4)+2] >> 3) << 10;
+					if (green & BIT(5)) {
+						color |= BIT(15);
 					}
+					for (int gBit = 6; gBit <= 10; gBit++) {
+						if (green & BIT(gBit)) {
+							color |= BIT(gBit-1);
+						}
+					}
+
+					int p = 0;
+					for (p = 0; p < 256; p++) {
+						if (!paletteSet[p]) {
+							palette[p] = color;
+							paletteSet[p] = true;
+							break;
+						} else if (palette[p] == color) {
+							break;
+						}
+					}
+					convertedFrame[i] = p;
 				}
 
-				int p = 0;
-				for (p = 0; p < 256; p++) {
-					if (!paletteSet[p]) {
-						palette[p] = color;
-						paletteSet[p] = true;
-						break;
-					} else if (palette[p] == color) {
-						break;
+				if (rvidHeader.interlaced) {
+					static bool bottomField = false;
+					int f = bottomField ? 1 : 0;
+					int x = 0;
+					for(int i = 0; i < 256*rvidHeader.vRes; i++) {
+						halvedFrame[i] = convertedFrame[(256*f)+x];
+						x++;
+						if (x == 256) {
+							f += 2;
+							x = 0;
+						}
 					}
+					bottomField = !bottomField;
 				}
-				convertedFrame[i] = p;
+
+				if ((b == 0) && ((i % 500) == 0)) printf("%i/%i\n", i, foundFrames);
+
+				// Save current frame to a file
+				fwrite(palette, 2, 256, videoOutput);
+				fwrite(rvidHeader.interlaced ? halvedFrame : convertedFrame, 1, 0x100*rvidHeader.vRes, videoOutput);
+
+				if ((b == 0) && rvidHeader.dualScreen) {
+					sprintf(framePath, "%s/bottom/frame%i.png", framesFolder, i);
+				}
 			}
-
-			if (rvidHeader.interlaced) {
-				static bool bottomField = false;
-				int f = bottomField ? 1 : 0;
-				int x = 0;
-				for(int i = 0; i < 256*rvidHeader.vRes; i++) {
-					halvedFrame[i] = convertedFrame[(256*f)+x];
-					x++;
-					if (x == 256) {
-						f += 2;
-						x = 0;
-					}
-				}
-				bottomField = !bottomField;
-			}
-
-			if ((i % 500) == 0) printf("%i/%i\n", i, foundFrames);
-
-			// Save current frame to a file
-			fwrite(palette, 2, 256, videoOutput);
-			fwrite(rvidHeader.interlaced ? halvedFrame : convertedFrame, 1, 0x100*rvidHeader.vRes, videoOutput);
 		} else {
 			break;
 		}
 	}
 
-	if (rvidHeader.hasSound == 1) {
+	if (soundFound) {
 		clear_screen();
 		printf("Adding sound...\n");
 
