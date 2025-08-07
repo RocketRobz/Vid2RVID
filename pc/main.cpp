@@ -570,11 +570,18 @@ int main(int argc, char **argv) {
 
 					// Save current frame to temp file
 					fwrite(palette, 2, 256, compressedFrames);
-					fwrite(compressedFrame, 1, compressedDataSize, compressedFrames);
-					fwrite(&compressedDataSize, 4, 1, compressedFrameSizeTable);
-					compressedFrameSizeTableSize += 4;
+					if (compressedDataSize >= 0x100*rvidHeader.vRes) {
+						// Store uncompressed frame if compressed frame is exactly the same size or larger
+						compressedDataSize = 0x100*rvidHeader.vRes;
+						fwrite(rvidHeader.interlaced ? halvedFrame : convertedFrame, 1, compressedDataSize, compressedFrames);
+					} else {
+						fwrite(compressedFrame, 1, compressedDataSize, compressedFrames);
+					}
+					fwrite(&compressedDataSize, 2, 1, compressedFrameSizeTable);
+					compressedFrameSizeTableSize += 2;
 					compressedFramesSize += 0x200;
 					compressedFramesSize += compressedDataSize;
+					delete[] compressedFrame;
 
 					if ((b == 0) && rvidHeader.dualScreen) {
 						sprintf(framePath, "%s/bottom/frame%i.png", framesFolder, i);
@@ -583,6 +590,12 @@ int main(int argc, char **argv) {
 			} else {
 				break;
 			}
+		}
+		if ((compressedFrameSizeTableSize % 4) != 0) {
+			// Align table size to 4 bytes
+			compressedDataSize = 0;
+			fwrite(&compressedDataSize, 2, 1, compressedFrameSizeTable);
+			compressedFrameSizeTableSize += 2;
 		}
 		fclose(compressedFrames);
 		fclose(compressedFrameSizeTable);
