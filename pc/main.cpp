@@ -28,6 +28,8 @@ void clear_screen(char fill = ' ') {
 	SetConsoleCursorPosition(console, tl);
 }
 
+static bool bottomField[2] = {false};
+
 uint8_t convertedFrame[256*192];
 uint8_t halvedFrame[256*96];
 unsigned char* compressedFrame;
@@ -537,8 +539,7 @@ int main(int argc, char **argv) {
 					}
 
 					if (rvidHeader.interlaced) {
-						static bool bottomField = false;
-						int f = bottomField ? 1 : 0;
+						int f = bottomField[b] ? 1 : 0;
 						int x = 0;
 						for(int i = 0; i < 256*rvidHeader.vRes; i++) {
 							halvedFrame[i] = convertedFrame[(256*f)+x];
@@ -548,7 +549,7 @@ int main(int argc, char **argv) {
 								x = 0;
 							}
 						}
-						bottomField = !bottomField;
+						bottomField[b] = !bottomField[b];
 
 						compressedFrame = lzssCompress((unsigned char*)halvedFrame, 0x100*rvidHeader.vRes);
 					} else {
@@ -674,8 +675,7 @@ int main(int argc, char **argv) {
 				}
 
 				if (rvidHeader.interlaced) {
-					static bool bottomField = false;
-					int f = bottomField ? 1 : 0;
+					int f = bottomField[b] ? 1 : 0;
 					int x = 0;
 					for(int i = 0; i < 256*rvidHeader.vRes; i++) {
 						halvedFrame[i] = convertedFrame[(256*f)+x];
@@ -685,7 +685,7 @@ int main(int argc, char **argv) {
 							x = 0;
 						}
 					}
-					bottomField = !bottomField;
+					bottomField[b] = !bottomField[b];
 				}
 
 				if ((b == 0) && ((i % 500) == 0)) printf("%i/%i\n", i, foundFrames);
