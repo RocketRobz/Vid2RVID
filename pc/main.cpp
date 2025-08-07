@@ -440,6 +440,8 @@ int main(int argc, char **argv) {
 			const char* line2 = "@cd \"";
 			const char* line2End = "\"";
 			const char* line3 = "@magick mogrify -ordered-dither checks,32,64,32 -colors 256 *.png";
+			const char* line3_2 = "@cd bottom";
+			const char* line3_3 = "@cd..";
 			const char* line4 = "@mkdir 256colors";
 			const char* line5 = "@echo Done!";
 			const char* line6 = "@pause";
@@ -461,6 +463,14 @@ int main(int argc, char **argv) {
 			fwrite(&newLine, 2, 1, batFile);
 			fwrite(line3, 1, strlen(line3), batFile);
 			fwrite(&newLine, 2, 1, batFile);
+			if (rvidHeader.dualScreen) {
+				fwrite(line3_2, 1, strlen(line3_2), batFile);
+				fwrite(&newLine, 2, 1, batFile);
+				fwrite(line3, 1, strlen(line3), batFile);
+				fwrite(&newLine, 2, 1, batFile);
+				fwrite(line3_3, 1, strlen(line3_3), batFile);
+				fwrite(&newLine, 2, 1, batFile);
+			}
 			fwrite(line4, 1, strlen(line4), batFile);
 			fwrite(&newLine, 2, 1, batFile);
 			fwrite(line5, 1, strlen(line5), batFile);
@@ -592,6 +602,9 @@ int main(int argc, char **argv) {
 
 		rvidHeader.framesOffset = 0x200;
 		rvidHeader.soundOffset = soundFound ? 0x200+((0x200+(0x100*rvidHeader.vRes))*rvidHeader.frames) : 0;
+		if (soundFound && rvidHeader.dualScreen) {
+			rvidHeader.soundOffset += (0x200+(0x100*rvidHeader.vRes))*rvidHeader.frames;
+		}
 	}
 
 	FILE* videoOutput = fopen("output.rvid", "wb");
