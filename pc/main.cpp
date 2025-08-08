@@ -507,9 +507,9 @@ int main(int argc, char **argv) {
 
 	FILE* compressedFrameSizeTable;
 	FILE* compressedFrames;
-	if (rvidHeader.framesCompressed == 1) {
+	if (rvidHeader.framesCompressed) {
 		clear_screen();
-		printf("Compressing...\n");
+		printf("Converting and compressing...\n");
 
 		compressedFrameSizeTable = fopen("tempTable.bin", "wb");
 		compressedFrames = fopen("tempFrames.bin", "wb");
@@ -633,9 +633,9 @@ int main(int argc, char **argv) {
 	fwrite(headerToFile, 1, 0x200, videoOutput);
 
 	clear_screen();
-	printf("Converting...\n");
+	printf(rvidHeader.framesCompressed ? "Adding compressed frames...\n" : "Converting...\n");
 
-	if (rvidHeader.framesCompressed == 1) {
+	if (rvidHeader.framesCompressed) {
 		uint32_t fsize = compressedFrameSizeTableSize;
 		uint32_t offset = 0;
 		int numr = 0;
@@ -760,7 +760,7 @@ int main(int argc, char **argv) {
 
 	fclose(videoOutput);
 
-	if (rvidHeader.framesCompressed == 1) {
+	if (rvidHeader.framesCompressed) {
 		remove("tempFrames.bin");
 		remove("tempTable.bin");
 	}
