@@ -380,6 +380,12 @@ int main(int argc, char **argv) {
 		if (rvidFpsEntered) {
 			printf("- Frame Rate: ");
 			switch (rvidHeader.fps) {
+				case 12:
+					printf("11.988");
+					break;
+				case 15:
+					printf("14.98");
+					break;
 				case 24:
 					printf("23.976");
 					break;
