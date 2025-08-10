@@ -31,7 +31,9 @@ void clear_screen(char fill = ' ') {
 static bool bottomField[2] = {false};
 
 uint8_t convertedFrame[256*192];
+uint16_t convertedFrame16[256*192];
 uint8_t halvedFrame[256*96];
+uint16_t halvedFrame16[256*96];
 unsigned char* compressedFrame;
 
 char fileBuffer[0x100000] = {0};
@@ -66,7 +68,8 @@ typedef struct rvidHeaderInfo {
 	uint8_t interlaced;		        // Is interlaced
 	uint8_t dualScreen;		        // Is dual screen video
 	uint16_t sampleRate;		    // Audio sample rate
-	uint16_t framesCompressed;	    // Frames are compressed
+	uint8_t framesCompressed;	    // Frames are compressed
+	uint8_t bmpMode;        		// 0 = 256 RGB565 colors, 1 = Unlimited RGB555 colors, 2 = Unlimited RGB565 colors
 	uint32_t framesOffset;		    // Offset of first frame
 	uint32_t soundOffset;		    // Offset of sound stream
 } rvidHeaderInfo;
@@ -100,6 +103,109 @@ const char* framesFolder = "rvidFrames";
 	fclose(videoInput);
 	printf("Done!\n");
 }*/
+
+bool paletteSet[256] = {false};
+uint16_t palette[256] = {0};
+
+void convertFrame(int b, unsigned width, std::vector<unsigned char> image) {
+	if (!rvidHeader.bmpMode) {
+		for (int i = 0; i < 256; i++) {
+			paletteSet[i] = false;
+			palette[i] = 0;
+		}
+	}
+
+	bool alternatePixel = false;
+	int x = 0;
+	for(unsigned i=0;i<image.size()/4;i++) {
+		if (rvidHeader.bmpMode && alternatePixel) {
+			if (image[(i*4)] >= 0x4 && image[(i*4)] < 0xFC) {
+				image[(i*4)] += 0x4;
+			}
+			if (rvidHeader.bmpMode == 2) {
+				if (image[(i*4)+1] >= 0x2 && image[(i*4)+1] < 0xFE) {
+					image[(i*4)+1] += 0x2;
+				}
+			} else {
+				if (image[(i*4)+1] >= 0x4 && image[(i*4)+1] < 0xFC) {
+					image[(i*4)+1] += 0x4;
+				}
+			}
+			if (image[(i*4)+2] >= 0x4 && image[(i*4)+2] < 0xFC) {
+				image[(i*4)+2] += 0x4;
+			}
+		}
+
+		uint16_t color = 0;
+		if (rvidHeader.bmpMode == 1) {
+			color = image[i*4]>>3 | (image[(i*4)+1]>>3)<<5 | (image[(i*4)+2]>>3)<<10 | BIT(15);
+		} else {
+			const uint16_t green = (image[(i*4)+1] >> 2) << 5;
+			color = image[i*4] >> 3 | (image[(i*4)+2] >> 3) << 10;
+			if (green & BIT(5)) {
+				color |= BIT(15);
+			}
+			for (int gBit = 6; gBit <= 10; gBit++) {
+				if (green & BIT(gBit)) {
+					color |= BIT(gBit-1);
+				}
+			}
+		}
+
+		if (rvidHeader.bmpMode) {
+			convertedFrame16[i] = color;
+
+			x++;
+			if ((unsigned)x == width) {
+				alternatePixel = !alternatePixel;
+				x=0;
+			}
+			alternatePixel = !alternatePixel;
+		} else {
+			int p = 0;
+			for (p = 0; p < 256; p++) {
+				if (!paletteSet[p]) {
+					palette[p] = color;
+					paletteSet[p] = true;
+					break;
+				} else if (palette[p] == color) {
+					break;
+				}
+			}
+			convertedFrame[i] = p;
+		}
+	}
+
+	if (rvidHeader.bmpMode) {
+		if (rvidHeader.interlaced) {
+			int f = bottomField[b] ? 1 : 0;
+			int x = 0;
+			for(int i = 0; i < 256*rvidHeader.vRes; i++) {
+				halvedFrame16[i] = convertedFrame16[(256*f)+x];
+				x++;
+				if (x == 256) {
+					f += 2;
+					x = 0;
+				}
+			}
+			bottomField[b] = !bottomField[b];
+		}
+	} else {
+		if (rvidHeader.interlaced) {
+			int f = bottomField[b] ? 1 : 0;
+			int x = 0;
+			for(int i = 0; i < 256*rvidHeader.vRes; i++) {
+				halvedFrame[i] = convertedFrame[(256*f)+x];
+				x++;
+				if (x == 256) {
+					f += 2;
+					x = 0;
+				}
+			}
+			bottomField[b] = !bottomField[b];
+		}
+	}
+}
 
 int main(int argc, char **argv) {
 
@@ -212,9 +318,60 @@ int main(int argc, char **argv) {
 	rvidHeader.formatString = 0x44495652;	// "RVID"
 	rvidHeader.ver = rvidVer;
 	rvidHeader.frames = foundFrames+1;
+	rvidHeader.bmpMode = info.GetInt("RVID", "BMP_MODE", 3);
 	rvidHeader.fps = info.GetInt("RVID", "FPS", 0);
 
 	bool reviewInformation = false;
+	bool bmpModeEntered = false;
+
+	if (rvidHeader.bmpMode == 3) {
+		clear_screen();
+		printf("Select the amount of colors to display on-screen.\n");
+		printf("(Dithering will be applied to look like more is on-screen.)\n\n");
+		printf("1: 256 (8-bit BMP, RGB565)\n- Frame Rate Limit: ");
+		printf(rvidHeader.dualScreen ? "29.97" : "59.94");
+		printf(" FPS\n");
+		printf("- Quality varies by video frame\n");
+		printf("- Recommended due to low file size and high frame rate support\n");
+		printf("- Supports DS screen filters\n");
+		printf("- Requires an installation of ImageMagick (with application directory added to system path)\n\n");
+		printf("2: Unlimited (16-bit BMP, RGB555)\n- Frame Rate Limit: ");
+		printf(rvidHeader.dualScreen ? "14.98" : "29.97");
+		printf(" FPS\n");
+		printf("- Consistent high quality\n");
+		printf("- Large file size\n");
+		printf("- Does not support DS screen filters\n");
+		printf("- No additional tools needed\n\n");
+		printf("3: Unlimited (16-bit BMP, RGB565)\n- Frame Rate Limit: ");
+		printf(rvidHeader.dualScreen ? "14.98" : "29.97");
+		printf(" FPS\n");
+		printf("- Consistent high quality\n");
+		printf("- Increased green color range\n");
+		printf("- Large file size\n");
+		printf("- Does not support DS screen filters\n");
+		printf("- No additional tools needed\n");
+		Sleep(100);
+
+		while (1) {
+			if (GetKeyState('1') & 0x8000) {
+				rvidHeader.bmpMode = 0;
+				break;
+			}
+			if (GetKeyState('2') & 0x8000) {
+				rvidHeader.bmpMode = 1;
+				break;
+			}
+			if (GetKeyState('3') & 0x8000) {
+				rvidHeader.bmpMode = 2;
+				break;
+			}
+			Sleep(10);
+		}
+		reviewInformation = true;
+		bmpModeEntered = true;
+		Sleep(10);
+	}
+
 	bool rvidFpsEntered = false;
 
 	if (rvidHeader.fps == 0) {
@@ -266,7 +423,14 @@ int main(int argc, char **argv) {
 
 	rvidHeader.vRes = 0;
 	rvidHeader.interlaced = (rvidHeader.fps > (rvidHeader.dualScreen ? 15 : 30)) ? 1 : 0;
-	if (rvidHeader.fps > (rvidHeader.dualScreen ? 12 : 24)) {
+	int fpsLimitForCompressionSupport = 24;
+	if (rvidHeader.bmpMode) {
+		fpsLimitForCompressionSupport /= 2;
+	}
+	if (rvidHeader.dualScreen) {
+		fpsLimitForCompressionSupport /= 2;
+	}
+	if (rvidHeader.fps > fpsLimitForCompressionSupport) {
 		rvidHeader.framesCompressed = 0;
 	} else {
 		rvidHeader.framesCompressed = info.GetInt("RVID", "COMPRESSED", 2);
@@ -377,6 +541,21 @@ int main(int argc, char **argv) {
 	if (reviewInformation) {
 		clear_screen();
 		printf("Is the entered information correct?\n");
+		if (bmpModeEntered) {
+			printf("- Color Amount: ");
+			switch (rvidHeader.bmpMode) {
+				case 0:
+					printf("256 (8-bit BMP, RGB565)");
+					break;
+				case 1:
+					printf("Unlimited (16-bit BMP, RGB555)");
+					break;
+				case 2:
+					printf("Unlimited (16-bit BMP, RGB565)");
+					break;
+			}
+			printf("\n");
+		}
 		if (rvidFpsEntered) {
 			printf("- Frame Rate: ");
 			switch (rvidHeader.fps) {
@@ -425,6 +604,9 @@ int main(int argc, char **argv) {
 		}
 		Sleep(10);
 
+		if (bmpModeEntered) {
+			info.SetInt("RVID", "BMP_MODE", rvidHeader.bmpMode);
+		}
 		if (rvidFpsEntered) {
 			info.SetInt("RVID", "FPS", rvidHeader.fps);
 		}
@@ -437,73 +619,77 @@ int main(int argc, char **argv) {
 		info.SaveIniFileModified(infoIniPath);
 	}
 
-	char flagPath[256];
-	sprintf(flagPath, "%s/256colors", framesFolder);
-	if (access(flagPath, F_OK) != 0) {
-		if (access("Process Frames.bat", F_OK) != 0) {
-			const uint16_t newLine = 0x0A0D;
-			const char* line1 = "@echo Processing frames, this may take a while...";
-			const char* line2 = "@cd \"";
-			const char* line2End = "\"";
-			const char* line3 = "@magick mogrify -ordered-dither checks,32,64,32 -colors 256 *.png";
-			const char* line3_2 = "@cd bottom";
-			const char* line3_3 = "@cd..";
-			const char* line4 = "@mkdir 256colors";
-			const char* line5 = "@echo Done!";
-			const char* line6 = "@pause";
+	if (!rvidHeader.bmpMode) {
+		char flagPath[256];
+		sprintf(flagPath, "%s/256colors", framesFolder);
+		if (access(flagPath, F_OK) != 0) {
+			if (access("Process Frames.bat", F_OK) != 0) {
+				const uint16_t newLine = 0x0A0D;
+				const char* line1 = "@echo Processing frames, this may take a while...";
+				const char* line2 = "@cd \"";
+				const char* line2End = "\"";
+				const char* line3 = "@magick mogrify -ordered-dither checks,32,64,32 -colors 256 *.png";
+				const char* line3_2 = "@cd bottom";
+				const char* line3_3 = "@cd..";
+				const char* line4 = "@mkdir 256colors";
+				const char* line5 = "@echo Done!";
+				const char* line6 = "@pause";
 
-			FILE* batFile = fopen("Process Frames.bat", "wb");
-			fwrite(line1, 1, strlen(line1), batFile);
-			fwrite(&newLine, 2, 1, batFile);
-			if (framesFolder[1] == ':') {
-				char cdPathToDrive[7];
-				sprintf(cdPathToDrive, "@cd C:");
-				cdPathToDrive[4] = framesFolder[0];
-
-				fwrite(cdPathToDrive, 1, 6, batFile);
+				FILE* batFile = fopen("Process Frames.bat", "wb");
+				fwrite(line1, 1, strlen(line1), batFile);
 				fwrite(&newLine, 2, 1, batFile);
-			}
-			fwrite(line2, 1, strlen(line2), batFile);
-			fwrite(framesFolder, 1, strlen(framesFolder), batFile);
-			fwrite(line2End, 1, strlen(line2End), batFile);
-			fwrite(&newLine, 2, 1, batFile);
-			fwrite(line3, 1, strlen(line3), batFile);
-			fwrite(&newLine, 2, 1, batFile);
-			if (rvidHeader.dualScreen) {
-				fwrite(line3_2, 1, strlen(line3_2), batFile);
+				if (framesFolder[1] == ':') {
+					char cdPathToDrive[7];
+					sprintf(cdPathToDrive, "@cd C:");
+					cdPathToDrive[4] = framesFolder[0];
+
+					fwrite(cdPathToDrive, 1, 6, batFile);
+					fwrite(&newLine, 2, 1, batFile);
+				}
+				fwrite(line2, 1, strlen(line2), batFile);
+				fwrite(framesFolder, 1, strlen(framesFolder), batFile);
+				fwrite(line2End, 1, strlen(line2End), batFile);
 				fwrite(&newLine, 2, 1, batFile);
 				fwrite(line3, 1, strlen(line3), batFile);
 				fwrite(&newLine, 2, 1, batFile);
-				fwrite(line3_3, 1, strlen(line3_3), batFile);
-				fwrite(&newLine, 2, 1, batFile);
-			}
-			fwrite(line4, 1, strlen(line4), batFile);
-			fwrite(&newLine, 2, 1, batFile);
-			fwrite(line5, 1, strlen(line5), batFile);
-			fwrite(&newLine, 2, 1, batFile);
-			fwrite(line6, 1, strlen(line6), batFile);
-			fclose(batFile);
-		}
-
-		while (access(flagPath, F_OK) != 0) {
-			clear_screen();
-			printf("Ensure ImageMagick is installed (with application directory added to system path),\n");
-			printf("then open \"Process Frames.bat\".\n\n");
-			printf("When the processing is done, press ENTER.\n");
-			Sleep(100);
-
-			while (1) {
-				if (GetKeyState(VK_RETURN) & 0x8000) {
-					break;
+				if (rvidHeader.dualScreen) {
+					fwrite(line3_2, 1, strlen(line3_2), batFile);
+					fwrite(&newLine, 2, 1, batFile);
+					fwrite(line3, 1, strlen(line3), batFile);
+					fwrite(&newLine, 2, 1, batFile);
+					fwrite(line3_3, 1, strlen(line3_3), batFile);
+					fwrite(&newLine, 2, 1, batFile);
 				}
-				Sleep(10);
+				fwrite(line4, 1, strlen(line4), batFile);
+				fwrite(&newLine, 2, 1, batFile);
+				fwrite(line5, 1, strlen(line5), batFile);
+				fwrite(&newLine, 2, 1, batFile);
+				fwrite(line6, 1, strlen(line6), batFile);
+				fclose(batFile);
 			}
+
+			while (access(flagPath, F_OK) != 0) {
+				clear_screen();
+				printf("Ensure ImageMagick is installed (with application directory added to system path),\n");
+				printf("then open \"Process Frames.bat\".\n\n");
+				printf("When the processing is done, press ENTER.\n");
+				Sleep(100);
+
+				while (1) {
+					if (GetKeyState(VK_RETURN) & 0x8000) {
+						break;
+					}
+					Sleep(10);
+				}
+			}
+		}
+
+		if (access("Process Frames.bat", F_OK) == 0) {
+			remove("Process Frames.bat");
 		}
 	}
 
-	if (access("Process Frames.bat", F_OK) == 0) {
-		remove("Process Frames.bat");
-	}
+	const int hRes = rvidHeader.bmpMode ? 0x200 : 0x100;
 
 	FILE* compressedFrameSizeTable;
 	FILE* compressedFrames;
@@ -527,65 +713,41 @@ int main(int argc, char **argv) {
 						}
 					}
 
-					bool paletteSet[256] = {false};
-					uint16_t palette[256] = {0};
-					for(unsigned i=0;i<image.size()/4;i++) {
-						const uint16_t green = (image[(i*4)+1] >> 2) << 5;
-						uint16_t color = image[i*4] >> 3 | (image[(i*4)+2] >> 3) << 10;
-						if (green & BIT(5)) {
-							color |= BIT(15);
-						}
-						for (int gBit = 6; gBit <= 10; gBit++) {
-							if (green & BIT(gBit)) {
-								color |= BIT(gBit-1);
-							}
-						}
+					convertFrame(b, width, image);
 
-						int p = 0;
-						for (p = 0; p < 256; p++) {
-							if (!paletteSet[p]) {
-								palette[p] = color;
-								paletteSet[p] = true;
-								break;
-							} else if (palette[p] == color) {
-								break;
-							}
+					if (rvidHeader.bmpMode) {
+						if (rvidHeader.interlaced) {
+							compressedFrame = lzssCompress((unsigned char*)halvedFrame16, 0x200*rvidHeader.vRes);
+						} else {
+							compressedFrame = lzssCompress((unsigned char*)convertedFrame16, 0x200*rvidHeader.vRes);
 						}
-						convertedFrame[i] = p;
-					}
-
-					if (rvidHeader.interlaced) {
-						int f = bottomField[b] ? 1 : 0;
-						int x = 0;
-						for(int i = 0; i < 256*rvidHeader.vRes; i++) {
-							halvedFrame[i] = convertedFrame[(256*f)+x];
-							x++;
-							if (x == 256) {
-								f += 2;
-								x = 0;
-							}
-						}
-						bottomField[b] = !bottomField[b];
-
-						compressedFrame = lzssCompress((unsigned char*)halvedFrame, 0x100*rvidHeader.vRes);
 					} else {
-						compressedFrame = lzssCompress((unsigned char*)convertedFrame, 0x100*rvidHeader.vRes);
+						if (rvidHeader.interlaced) {
+							compressedFrame = lzssCompress((unsigned char*)halvedFrame, 0x100*rvidHeader.vRes);
+						} else {
+							compressedFrame = lzssCompress((unsigned char*)convertedFrame, 0x100*rvidHeader.vRes);
+						}
 					}
 
 					if ((b == 0) && ((i % 500) == 0)) printf("%i/%i\n", i, foundFrames);
 
 					// Save current frame to temp file
-					fwrite(palette, 2, 256, compressedFrames);
-					if (compressedDataSize >= 0x100*rvidHeader.vRes) {
+					if (!rvidHeader.bmpMode) {
+						fwrite(palette, 2, 256, compressedFrames);
+					}
+					if (compressedDataSize >= hRes*rvidHeader.vRes) {
 						// Store uncompressed frame if compressed frame is exactly the same size or larger
-						compressedDataSize = 0x100*rvidHeader.vRes;
+						compressedDataSize = hRes*rvidHeader.vRes;
 						fwrite(rvidHeader.interlaced ? halvedFrame : convertedFrame, 1, compressedDataSize, compressedFrames);
 					} else {
 						fwrite(compressedFrame, 1, compressedDataSize, compressedFrames);
 					}
-					fwrite(&compressedDataSize, 2, 1, compressedFrameSizeTable);
-					compressedFrameSizeTableSize += 2;
-					compressedFramesSize += 0x200;
+					const int tableSizeIncrease = rvidHeader.bmpMode ? 4 : 2;
+					fwrite(&compressedDataSize, tableSizeIncrease, 1, compressedFrameSizeTable);
+					compressedFrameSizeTableSize += tableSizeIncrease;
+					if (!rvidHeader.bmpMode) {
+						compressedFramesSize += 0x200;
+					}
 					compressedFramesSize += compressedDataSize;
 					delete[] compressedFrame;
 
@@ -620,9 +782,16 @@ int main(int argc, char **argv) {
 		}
 
 		rvidHeader.framesOffset = 0x200;
-		rvidHeader.soundOffset = soundFound ? 0x200+((0x200+(0x100*rvidHeader.vRes))*rvidHeader.frames) : 0;
-		if (soundFound && rvidHeader.dualScreen) {
-			rvidHeader.soundOffset += (0x200+(0x100*rvidHeader.vRes))*rvidHeader.frames;
+		if (rvidHeader.bmpMode) {
+			rvidHeader.soundOffset = soundFound ? 0x200+((0x200*rvidHeader.vRes)*rvidHeader.frames) : 0;
+			if (soundFound && rvidHeader.dualScreen) {
+				rvidHeader.soundOffset += (0x200*rvidHeader.vRes)*rvidHeader.frames;
+			}
+		} else {
+			rvidHeader.soundOffset = soundFound ? 0x200+((0x200+(0x100*rvidHeader.vRes))*rvidHeader.frames) : 0;
+			if (soundFound && rvidHeader.dualScreen) {
+				rvidHeader.soundOffset += (0x200+(0x100*rvidHeader.vRes))*rvidHeader.frames;
+			}
 		}
 	}
 
@@ -679,52 +848,17 @@ int main(int argc, char **argv) {
 				unsigned width, height;
 				lodepng::decode(image, width, height, framePath);
 
-				bool paletteSet[256] = {false};
-				uint16_t palette[256] = {0};
-				for(unsigned i=0;i<image.size()/4;i++) {
-					const uint16_t green = (image[(i*4)+1] >> 2) << 5;
-					uint16_t color = image[i*4] >> 3 | (image[(i*4)+2] >> 3) << 10;
-					if (green & BIT(5)) {
-						color |= BIT(15);
-					}
-					for (int gBit = 6; gBit <= 10; gBit++) {
-						if (green & BIT(gBit)) {
-							color |= BIT(gBit-1);
-						}
-					}
-
-					int p = 0;
-					for (p = 0; p < 256; p++) {
-						if (!paletteSet[p]) {
-							palette[p] = color;
-							paletteSet[p] = true;
-							break;
-						} else if (palette[p] == color) {
-							break;
-						}
-					}
-					convertedFrame[i] = p;
-				}
-
-				if (rvidHeader.interlaced) {
-					int f = bottomField[b] ? 1 : 0;
-					int x = 0;
-					for(int i = 0; i < 256*rvidHeader.vRes; i++) {
-						halvedFrame[i] = convertedFrame[(256*f)+x];
-						x++;
-						if (x == 256) {
-							f += 2;
-							x = 0;
-						}
-					}
-					bottomField[b] = !bottomField[b];
-				}
+				convertFrame(b, width, image);
 
 				if ((b == 0) && ((i % 500) == 0)) printf("%i/%i\n", i, foundFrames);
 
 				// Save current frame to a file
-				fwrite(palette, 2, 256, videoOutput);
-				fwrite(rvidHeader.interlaced ? halvedFrame : convertedFrame, 1, 0x100*rvidHeader.vRes, videoOutput);
+				if (rvidHeader.bmpMode) {
+					fwrite(rvidHeader.interlaced ? halvedFrame16 : convertedFrame16, 1, 0x200*rvidHeader.vRes, videoOutput);
+				} else {
+					fwrite(palette, 2, 256, videoOutput);
+					fwrite(rvidHeader.interlaced ? halvedFrame : convertedFrame, 1, 0x100*rvidHeader.vRes, videoOutput);
+				}
 
 				if ((b == 0) && rvidHeader.dualScreen) {
 					sprintf(framePath, "%s/bottom/frame%i.png", framesFolder, i);
