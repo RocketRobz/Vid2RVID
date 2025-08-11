@@ -33,11 +33,15 @@ void clear_screen(char fill = ' ') {
 }
 
 static bool bottomField[2] = {false};
+static bool currentFrame = false;
 
-u8 convertedFrame[256*192];
-u16 convertedFrame16[256*192];
-u8 halvedFrame[256*96];
-u16 halvedFrame16[256*96];
+bool paletteSet[256] = {false};
+u16 palette[2][256] = {0};
+
+u8 convertedFrame[2][256*192];
+u16 convertedFrame16[2][256*192];
+u8 halvedFrame[2][256*96];
+u16 halvedFrame16[2][256*96];
 unsigned char* compressedFrame;
 
 char fileBuffer[0x100000] = {0};
@@ -110,14 +114,11 @@ const char* framesFolder = "rvidFrames";
 	printf("Done!\n");
 }*/
 
-bool paletteSet[256] = {false};
-u16 palette[256] = {0};
-
 void convertFrame(int b, unsigned width, std::vector<unsigned char> image) {
 	if (!rvidHeader.bmpMode) {
 		for (int i = 0; i < 256; i++) {
 			paletteSet[i] = false;
-			palette[i] = 0;
+			palette[currentFrame][i] = 0;
 		}
 	}
 
@@ -159,7 +160,7 @@ void convertFrame(int b, unsigned width, std::vector<unsigned char> image) {
 		}
 
 		if (rvidHeader.bmpMode) {
-			convertedFrame16[i] = color;
+			convertedFrame16[currentFrame][i] = color;
 
 			x++;
 			if ((unsigned)x == width) {
@@ -171,14 +172,14 @@ void convertFrame(int b, unsigned width, std::vector<unsigned char> image) {
 			int p = 0;
 			for (p = 0; p < 256; p++) {
 				if (!paletteSet[p]) {
-					palette[p] = color;
+					palette[currentFrame][p] = color;
 					paletteSet[p] = true;
 					break;
-				} else if (palette[p] == color) {
+				} else if (palette[currentFrame][p] == color) {
 					break;
 				}
 			}
-			convertedFrame[i] = p;
+			convertedFrame[currentFrame][i] = p;
 		}
 	}
 
@@ -187,7 +188,7 @@ void convertFrame(int b, unsigned width, std::vector<unsigned char> image) {
 			int f = bottomField[b] ? 1 : 0;
 			int x = 0;
 			for(int i = 0; i < 256*rvidHeader.vRes; i++) {
-				halvedFrame16[i] = convertedFrame16[(256*f)+x];
+				halvedFrame16[currentFrame][i] = convertedFrame16[currentFrame][(256*f)+x];
 				x++;
 				if (x == 256) {
 					f += 2;
@@ -201,7 +202,7 @@ void convertFrame(int b, unsigned width, std::vector<unsigned char> image) {
 			int f = bottomField[b] ? 1 : 0;
 			int x = 0;
 			for(int i = 0; i < 256*rvidHeader.vRes; i++) {
-				halvedFrame[i] = convertedFrame[(256*f)+x];
+				halvedFrame[currentFrame][i] = convertedFrame[currentFrame][(256*f)+x];
 				x++;
 				if (x == 256) {
 					f += 2;
@@ -211,6 +212,8 @@ void convertFrame(int b, unsigned width, std::vector<unsigned char> image) {
 			bottomField[b] = !bottomField[b];
 		}
 	}
+
+	currentFrame = !currentFrame;
 }
 
 int main(int argc, char **argv) {
@@ -735,6 +738,8 @@ int main(int argc, char **argv) {
 		sprintf(framePath, "%s/frame%i.png", framesFolder, i);
 		if (access(framePath, F_OK) == 0) {
 			for (int b = 0; b < rvidHeader.dualScreen+1; b++) {
+				const int num = rvidHeader.dualScreen ? (i*2)+b : i;
+
 				std::vector<unsigned char> image;
 				unsigned width, height;
 				lodepng::decode(image, width, height, framePath);
@@ -749,44 +754,65 @@ int main(int argc, char **argv) {
 
 				convertFrame(b, width, image);
 
-				// Save current frame to temp file
-				if (!rvidHeader.bmpMode) {
-					fwrite(palette, 2, 256, tempFrames);
-				}
-
-				if (framesCompressed) {
+				bool duplicateFrameFound = false;
+				if (num > 0) {
 					if (rvidHeader.bmpMode) {
 						if (rvidHeader.interlaced) {
-							compressedFrame = lzssCompress((unsigned char*)halvedFrame16, 0x200*rvidHeader.vRes);
+							duplicateFrameFound = memcmp(halvedFrame16[0], halvedFrame16[1], 0x200*rvidHeader.vRes) == 0;
 						} else {
-							compressedFrame = lzssCompress((unsigned char*)convertedFrame16, 0x200*rvidHeader.vRes);
+							duplicateFrameFound = memcmp(convertedFrame16[0], convertedFrame16[1], 0x200*rvidHeader.vRes) == 0;
 						}
 					} else {
-						if (rvidHeader.interlaced) {
-							compressedFrame = lzssCompress((unsigned char*)halvedFrame, 0x100*rvidHeader.vRes);
-						} else {
-							compressedFrame = lzssCompress((unsigned char*)convertedFrame, 0x100*rvidHeader.vRes);
+						duplicateFrameFound = memcmp(palette[0], palette[1], 256*2) == 0;
+						if (duplicateFrameFound) {
+							if (rvidHeader.interlaced) {
+								duplicateFrameFound = memcmp(halvedFrame[0], halvedFrame[1], 0x100*rvidHeader.vRes) == 0;
+							} else {
+								duplicateFrameFound = memcmp(convertedFrame[0], convertedFrame[1], 0x100*rvidHeader.vRes) == 0;
+							}
 						}
 					}
 				}
 
-				if (!framesCompressed || frameFileSize >= hRes*rvidHeader.vRes) {
-					// Store uncompressed frame if compressed frame is exactly the same size or larger, or if compression is disabled
-					frameFileSize = hRes*rvidHeader.vRes;
-					if (rvidHeader.bmpMode) {
-						fwrite(rvidHeader.interlaced ? halvedFrame16 : convertedFrame16, 1, frameFileSize, tempFrames);
-					} else {
-						fwrite(rvidHeader.interlaced ? halvedFrame : convertedFrame, 1, frameFileSize, tempFrames);
+				if (!duplicateFrameFound) {
+					// Save current frame to temp file
+					if (!rvidHeader.bmpMode) {
+						fwrite(palette[currentFrame], 2, 256, tempFrames);
 					}
-				} else {
-					fwrite(compressedFrame, 1, frameFileSize, tempFrames);
+
+					if (framesCompressed) {
+						if (rvidHeader.bmpMode) {
+							if (rvidHeader.interlaced) {
+								compressedFrame = lzssCompress((unsigned char*)halvedFrame16[currentFrame], 0x200*rvidHeader.vRes);
+							} else {
+								compressedFrame = lzssCompress((unsigned char*)convertedFrame16[currentFrame], 0x200*rvidHeader.vRes);
+							}
+						} else {
+							if (rvidHeader.interlaced) {
+								compressedFrame = lzssCompress((unsigned char*)halvedFrame[currentFrame], 0x100*rvidHeader.vRes);
+							} else {
+								compressedFrame = lzssCompress((unsigned char*)convertedFrame[currentFrame], 0x100*rvidHeader.vRes);
+							}
+						}
+					}
+
+					if (!framesCompressed || (frameFileSize >= hRes*rvidHeader.vRes)) {
+						// Store uncompressed frame if compressed frame is exactly the same size or larger, or if compression is disabled
+						frameFileSize = hRes*rvidHeader.vRes;
+						if (rvidHeader.bmpMode) {
+							fwrite(rvidHeader.interlaced ? halvedFrame16[currentFrame] : convertedFrame16[currentFrame], 1, frameFileSize, tempFrames);
+						} else {
+							fwrite(rvidHeader.interlaced ? halvedFrame[currentFrame] : convertedFrame[currentFrame], 1, frameFileSize, tempFrames);
+						}
+					} else {
+						fwrite(compressedFrame, 1, frameFileSize, tempFrames);
+					}
 				}
 
-				const int num = rvidHeader.dualScreen ? (i*2)+b : i;
 				if (num > 1) {
 					frameOffsetTable[num] = frameOffsetTable[num-1];
 				}
-				if (num > 0) {
+				if ((num > 0) && !duplicateFrameFound) {
 					if (!rvidHeader.bmpMode) {
 						frameOffsetTable[num] += 0x200;
 					}
@@ -800,12 +826,14 @@ int main(int argc, char **argv) {
 					}
 				}
 				previousFrameFileSize = frameFileSize;
-				if (!rvidHeader.bmpMode) {
-					tempFramesSize += 0x200;
-				}
-				tempFramesSize += frameFileSize;
-				if (framesCompressed) {
-					delete[] compressedFrame;
+				if (!duplicateFrameFound) {
+					if (!rvidHeader.bmpMode) {
+						tempFramesSize += 0x200;
+					}
+					tempFramesSize += frameFileSize;
+					if (framesCompressed) {
+						delete[] compressedFrame;
+					}
 				}
 
 				if ((b == 0) && rvidHeader.dualScreen) {
