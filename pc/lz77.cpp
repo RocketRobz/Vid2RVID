@@ -11,7 +11,7 @@
 
 #pragma GCC optimize("-O3")
 
-int compressedDataSize = 0;
+int frameFileSize = 0;
 
 unsigned char *lzssCompress(unsigned char *Data, int dataSize)
 {
@@ -93,6 +93,6 @@ unsigned char *lzssCompress(unsigned char *Data, int dataSize)
 		if (Offs >= length) break;
 	}
 	while ((dstoffs % 4) != 0) dstoffs++;
-	compressedDataSize = dstoffs;
+	frameFileSize = dstoffs;
 	return result;
 }
