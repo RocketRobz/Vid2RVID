@@ -42,6 +42,7 @@ unsigned char* compressedFrame;
 
 char fileBuffer[0x100000] = {0};
 u32 frameOffsetTableSize = 0;
+int previousCompressedDataSize = 0;
 u32 compressedFrameSizeTableSize = 0;
 u32 compressedFramesSize = 0;
 u32 soundSize = 0;
@@ -773,17 +774,23 @@ int main(int argc, char **argv) {
 					} else {
 						fwrite(compressedFrame, 1, compressedDataSize, compressedFrames);
 					}
+
 					const int num = rvidHeader.dualScreen ? (i*2)+b : i;
 					if (num > 1) {
 						frameOffsetTable[num] = frameOffsetTable[num-1];
 					}
+					if (num > 0) {
+						if (!rvidHeader.bmpMode) {
+							frameOffsetTable[num] += 0x200;
+						}
+						frameOffsetTable[num] += previousCompressedDataSize;
+					}
 					if (rvidHeader.bmpMode) {
 						compressedFrameSizeTable32[num] = compressedDataSize;
-						if (num > 0) frameOffsetTable[num] += compressedDataSize;
 					} else {
 						compressedFrameSizeTable16[num] = compressedDataSize;
-						if (num > 0) frameOffsetTable[num] += 0x200+compressedDataSize;
 					}
+					previousCompressedDataSize = compressedDataSize;
 					if (!rvidHeader.bmpMode) {
 						compressedFramesSize += 0x200;
 					}
@@ -799,9 +806,14 @@ int main(int argc, char **argv) {
 			}
 		}
 		fclose(compressedFrames);
+
 		for (int i = 0; i <= foundFrames; i++) {
-			frameOffsetTable[i] += 0x200+frameOffsetTableSize+compressedFrameSizeTableSize;
+			for (int b = 0; b < rvidHeader.dualScreen+1; b++) {
+				const int num = rvidHeader.dualScreen ? (i*2)+b : i;
+				frameOffsetTable[num] += 0x200+frameOffsetTableSize+compressedFrameSizeTableSize;
+			}
 		}
+
 		rvidHeader.compressedFrameSizeTableOffset = 0x200+frameOffsetTableSize;
 		rvidHeader.soundOffset = soundFound ? 0x200+frameOffsetTableSize+compressedFrameSizeTableSize+compressedFramesSize : 0;
 	} else {
@@ -855,6 +867,21 @@ int main(int argc, char **argv) {
 	}
 
 	FILE* videoOutput = fopen("output.rvid", "wb");
+	if (!videoOutput) {
+		clear_screen();
+		printf("Failed to create output.rvid\n");
+		printf("\n");
+		printf("Press ESC to exit\n");
+
+		while (1) {
+			if (GetKeyState(VK_ESCAPE) & 0x8000) {
+				break;
+			}
+			Sleep(10);
+		}
+
+		return 0;
+	}
 
 	// Write header
 	memcpy(headerToFile, &rvidHeader, sizeof(rvidHeaderInfo));
