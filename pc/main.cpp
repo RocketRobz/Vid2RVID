@@ -714,10 +714,10 @@ int main(int argc, char **argv) {
 
 		if (rvidHeader.bmpMode) {
 			compressedFrameSizeTable32 = new u32[compressedFrameSizeTableSize/4];
-			memset(compressedFrameSizeTable32, 0, compressedFrameSizeTableSize/4);
+			memset(compressedFrameSizeTable32, 0, compressedFrameSizeTableSize);
 		} else {
 			compressedFrameSizeTable16 = new u16[compressedFrameSizeTableSize/2];
-			memset(compressedFrameSizeTable16, 0, compressedFrameSizeTableSize/2);
+			memset(compressedFrameSizeTable16, 0, compressedFrameSizeTableSize);
 		}
 
 		compressedFrames = fopen("tempFrames.bin", "wb");
