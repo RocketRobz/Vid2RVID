@@ -14,6 +14,10 @@
 #include "lz77.h"
 #include "inifile.h"
 
+typedef uint32_t u32;
+typedef uint16_t u16;
+typedef uint8_t u8;
+
 template<class TYPE> inline TYPE BIT(const TYPE & x)
 { return TYPE(1) << x; }
 
@@ -30,23 +34,23 @@ void clear_screen(char fill = ' ') {
 
 static bool bottomField[2] = {false};
 
-uint8_t convertedFrame[256*192];
-uint16_t convertedFrame16[256*192];
-uint8_t halvedFrame[256*96];
-uint16_t halvedFrame16[256*96];
+u8 convertedFrame[256*192];
+u16 convertedFrame16[256*192];
+u8 halvedFrame[256*96];
+u16 halvedFrame16[256*96];
 unsigned char* compressedFrame;
 
 char fileBuffer[0x100000] = {0};
-uint32_t compressedFrameSizeTableSize = 0;
-uint32_t compressedFramesSize = 0;
-uint32_t soundSize = 0;
+u32 compressedFrameSizeTableSize = 0;
+u32 compressedFramesSize = 0;
+u32 soundSize = 0;
 
-uint8_t headerToFile[0x200] = {0};
+u8 headerToFile[0x200] = {0};
 
-uint32_t getFileSize(const char *fileName)
+u32 getFileSize(const char *fileName)
 {
 	FILE* fp = fopen(fileName, "rb");
-	uint32_t fsize = 0;
+	u32 fsize = 0;
 	if (fp) {
 		fseek(fp, 0, SEEK_END);
 		fsize = ftell(fp);			// Get source file's size
@@ -60,18 +64,18 @@ uint32_t getFileSize(const char *fileName)
 #define rvidVer 3
 
 typedef struct rvidHeaderInfo {
-	uint32_t formatString;  	    // "RVID" string
-	uint32_t ver;			        // File format version
-	uint32_t frames;			    // Number of frames
-	uint8_t fps;				    // Frames per second
-	uint8_t vRes;			        // Vertical resolution
-	uint8_t interlaced;		        // Is interlaced
-	uint8_t dualScreen;		        // Is dual screen video
-	uint16_t sampleRate;		    // Audio sample rate
-	uint8_t framesCompressed;	    // Frames are compressed
-	uint8_t bmpMode;        		// 0 = 256 RGB565 colors, 1 = Unlimited RGB555 colors, 2 = Unlimited RGB565 colors
-	uint32_t framesOffset;		    // Offset of first frame
-	uint32_t soundOffset;		    // Offset of sound stream
+	u32 formatString;  	    // "RVID" string
+	u32 ver;			    // File format version
+	u32 frames;			    // Number of frames
+	u8 fps;				    // Frames per second
+	u8 vRes;			    // Vertical resolution
+	u8 interlaced;		    // Is interlaced
+	u8 dualScreen;		    // Is dual screen video
+	u16 sampleRate;		    // Audio sample rate
+	u8 framesCompressed;	// Frames are compressed
+	u8 bmpMode;        		// 0 = 256 RGB565 colors, 1 = Unlimited RGB555 colors, 2 = Unlimited RGB565 colors
+	u32 framesOffset;		// Offset of first frame
+	u32 soundOffset;		// Offset of sound stream
 } rvidHeaderInfo;
 
 rvidHeaderInfo rvidHeader;
@@ -105,7 +109,7 @@ const char* framesFolder = "rvidFrames";
 }*/
 
 bool paletteSet[256] = {false};
-uint16_t palette[256] = {0};
+u16 palette[256] = {0};
 
 void convertFrame(int b, unsigned width, std::vector<unsigned char> image) {
 	if (!rvidHeader.bmpMode) {
@@ -136,11 +140,11 @@ void convertFrame(int b, unsigned width, std::vector<unsigned char> image) {
 			}
 		}
 
-		uint16_t color = 0;
+		u16 color = 0;
 		if (rvidHeader.bmpMode == 1) {
 			color = image[i*4]>>3 | (image[(i*4)+1]>>3)<<5 | (image[(i*4)+2]>>3)<<10 | BIT(15);
 		} else {
-			const uint16_t green = (image[(i*4)+1] >> 2) << 5;
+			const u16 green = (image[(i*4)+1] >> 2) << 5;
 			color = image[i*4] >> 3 | (image[(i*4)+2] >> 3) << 10;
 			if (green & BIT(5)) {
 				color |= BIT(15);
@@ -624,7 +628,7 @@ int main(int argc, char **argv) {
 		sprintf(flagPath, "%s/256colors", framesFolder);
 		if (access(flagPath, F_OK) != 0) {
 			if (access("Process Frames.bat", F_OK) != 0) {
-				const uint16_t newLine = 0x0A0D;
+				const u16 newLine = 0x0A0D;
 				const char* line1 = "@echo Processing frames, this may take a while...";
 				const char* line2 = "@cd \"";
 				const char* line2End = "\"";
@@ -691,13 +695,31 @@ int main(int argc, char **argv) {
 
 	const int hRes = rvidHeader.bmpMode ? 0x200 : 0x100;
 
-	FILE* compressedFrameSizeTable;
+	u32* compressedFrameSizeTable32 = NULL;
+	u16* compressedFrameSizeTable16 = NULL;
 	FILE* compressedFrames;
 	if (rvidHeader.framesCompressed) {
 		clear_screen();
 		printf("Converting and compressing...\n");
 
-		compressedFrameSizeTable = fopen("tempTable.bin", "wb");
+		for (int i = 0; i <= foundFrames; i++) {
+			for (int b = 0; b < rvidHeader.dualScreen+1; b++) {
+				compressedFrameSizeTableSize += rvidHeader.bmpMode ? 4 : 2;
+			}
+		}
+		if ((compressedFrameSizeTableSize % 4) != 0) {
+			// Align table size to 4 bytes
+			compressedFrameSizeTableSize += 2;
+		}
+
+		if (rvidHeader.bmpMode) {
+			compressedFrameSizeTable32 = new u32[compressedFrameSizeTableSize/4];
+			memset(compressedFrameSizeTable32, 0, compressedFrameSizeTableSize/4);
+		} else {
+			compressedFrameSizeTable16 = new u16[compressedFrameSizeTableSize/2];
+			memset(compressedFrameSizeTable16, 0, compressedFrameSizeTableSize/2);
+		}
+
 		compressedFrames = fopen("tempFrames.bin", "wb");
 		for (int i = 0; i <= foundFrames; i++) {
 			sprintf(framePath, "%s/frame%i.png", framesFolder, i);
@@ -707,7 +729,7 @@ int main(int argc, char **argv) {
 					unsigned width, height;
 					lodepng::decode(image, width, height, framePath);
 					if (rvidHeader.vRes == 0) {
-						rvidHeader.vRes = (uint8_t)height;
+						rvidHeader.vRes = (u8)height;
 						if (rvidHeader.interlaced) {
 							rvidHeader.vRes /= 2;
 						}
@@ -742,9 +764,19 @@ int main(int argc, char **argv) {
 					} else {
 						fwrite(compressedFrame, 1, compressedDataSize, compressedFrames);
 					}
-					const int tableSizeIncrease = rvidHeader.bmpMode ? 4 : 2;
-					fwrite(&compressedDataSize, tableSizeIncrease, 1, compressedFrameSizeTable);
-					compressedFrameSizeTableSize += tableSizeIncrease;
+					if (rvidHeader.dualScreen) {
+						if (rvidHeader.bmpMode) {
+							compressedFrameSizeTable32[(i/2)+b] = compressedDataSize;
+						} else {
+							compressedFrameSizeTable16[(i/2)+b] = compressedDataSize;
+						}
+					} else {
+						if (rvidHeader.bmpMode) {
+							compressedFrameSizeTable32[i] = compressedDataSize;
+						} else {
+							compressedFrameSizeTable16[i] = compressedDataSize;
+						}
+					}
 					if (!rvidHeader.bmpMode) {
 						compressedFramesSize += 0x200;
 					}
@@ -759,14 +791,7 @@ int main(int argc, char **argv) {
 				break;
 			}
 		}
-		if ((compressedFrameSizeTableSize % 4) != 0) {
-			// Align table size to 4 bytes
-			compressedDataSize = 0;
-			fwrite(&compressedDataSize, 2, 1, compressedFrameSizeTable);
-			compressedFrameSizeTableSize += 2;
-		}
 		fclose(compressedFrames);
-		fclose(compressedFrameSizeTable);
 		rvidHeader.framesOffset = 0x200+compressedFrameSizeTableSize;
 		rvidHeader.soundOffset = soundFound ? 0x200+compressedFrameSizeTableSize+compressedFramesSize : 0;
 	} else {
@@ -775,7 +800,7 @@ int main(int argc, char **argv) {
 			std::vector<unsigned char> image;
 			unsigned width, height;
 			lodepng::decode(image, width, height, framePath);
-			rvidHeader.vRes = (uint8_t)height;
+			rvidHeader.vRes = (u8)height;
 			if (rvidHeader.interlaced) {
 				rvidHeader.vRes /= 2;
 			}
@@ -805,27 +830,17 @@ int main(int argc, char **argv) {
 	printf(rvidHeader.framesCompressed ? "Adding compressed frames...\n" : "Converting...\n");
 
 	if (rvidHeader.framesCompressed) {
-		uint32_t fsize = compressedFrameSizeTableSize;
-		uint32_t offset = 0;
-		int numr = 0;
-
-		compressedFrameSizeTable = fopen("tempTable.bin", "rb");
-		while (1)
-		{
-			// Add size table to .rvid file
-			numr = fread(fileBuffer, 1, sizeof(fileBuffer), compressedFrameSizeTable);
-			fwrite(fileBuffer, 1, numr, videoOutput);
-			offset += sizeof(fileBuffer);
-
-			if (offset > fsize) {
-				break;
-			}
+		if (rvidHeader.bmpMode) {
+			fwrite(compressedFrameSizeTable32, 1, compressedFrameSizeTableSize, videoOutput);
+			delete[] compressedFrameSizeTable32;
+		} else {
+			fwrite(compressedFrameSizeTable16, 1, compressedFrameSizeTableSize, videoOutput);
+			delete[] compressedFrameSizeTable16;
 		}
-		fclose(compressedFrameSizeTable);
 
-		fsize = compressedFramesSize;
-		offset = 0;
-		numr = 0;
+		u32 fsize = compressedFramesSize;
+		u32 offset = 0;
+		int numr = 0;
 
 		compressedFrames = fopen("tempFrames.bin", "rb");
 		while (1)
@@ -873,8 +888,8 @@ int main(int argc, char **argv) {
 		clear_screen();
 		printf("Adding sound...\n");
 
-		uint32_t fsize = getFileSize(soundPath);
-		uint32_t offset = 0;
+		u32 fsize = getFileSize(soundPath);
+		u32 offset = 0;
 		int numr;
 
 		FILE* soundFile = fopen(soundPath, "rb");
@@ -896,7 +911,6 @@ int main(int argc, char **argv) {
 
 	if (rvidHeader.framesCompressed) {
 		remove("tempFrames.bin");
-		remove("tempTable.bin");
 	}
 
 	clear_screen();

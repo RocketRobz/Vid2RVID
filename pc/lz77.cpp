@@ -8,7 +8,6 @@
 #include <unistd.h>                       //probably don't need most of these :p
 #include <stdint.h>
 #include <string.h>
-#include "tonccpy.h"
 
 #pragma GCC optimize("-O3")
 
@@ -19,6 +18,7 @@ unsigned char *lzssCompress(unsigned char *Data, int dataSize)
 	unsigned char* dataptr = Data;
 
 	unsigned char* result = new unsigned char[dataSize + dataSize / 8 + 4];
+	memset(result, 0, dataSize + dataSize / 8 + 4);
 	unsigned char* resultptr = result;
 	*resultptr++ = 0x10;
 	*resultptr++ = (unsigned char)(dataSize & 0xFF);
@@ -94,8 +94,5 @@ unsigned char *lzssCompress(unsigned char *Data, int dataSize)
 	}
 	while ((dstoffs % 4) != 0) dstoffs++;
 	compressedDataSize = dstoffs;
-	unsigned char* realresult = new unsigned char[dstoffs];
-	tonccpy(realresult, result, dstoffs);
-	delete[] result;
-	return realresult;
+	return result;
 }
