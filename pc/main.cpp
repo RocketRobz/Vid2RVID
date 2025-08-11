@@ -766,9 +766,9 @@ int main(int argc, char **argv) {
 					}
 					if (rvidHeader.dualScreen) {
 						if (rvidHeader.bmpMode) {
-							compressedFrameSizeTable32[(i/2)+b] = compressedDataSize;
+							compressedFrameSizeTable32[(i*2)+b] = compressedDataSize;
 						} else {
-							compressedFrameSizeTable16[(i/2)+b] = compressedDataSize;
+							compressedFrameSizeTable16[(i*2)+b] = compressedDataSize;
 						}
 					} else {
 						if (rvidHeader.bmpMode) {
