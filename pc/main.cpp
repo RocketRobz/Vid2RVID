@@ -34,6 +34,7 @@ void clear_screen(char fill = ' ') {
 
 static bool bottomField[2] = {false};
 static bool currentFrame = false;
+static bool duplicateFrameFoundPrev = false;
 
 bool paletteSet[256] = {false};
 u16 palette[2][256] = {0};
@@ -812,7 +813,7 @@ int main(int argc, char **argv) {
 				if (num > 1) {
 					frameOffsetTable[num] = frameOffsetTable[num-1];
 				}
-				if ((num > 0) && !duplicateFrameFound) {
+				if ((num > 0) && !duplicateFrameFoundPrev) {
 					if (!rvidHeader.bmpMode) {
 						frameOffsetTable[num] += 0x200;
 					}
@@ -839,6 +840,8 @@ int main(int argc, char **argv) {
 				if ((b == 0) && rvidHeader.dualScreen) {
 					sprintf(framePath, "%s/bottom/frame%i.png", framesFolder, i);
 				}
+
+				duplicateFrameFoundPrev = duplicateFrameFound;
 			}
 		} else {
 			break;
