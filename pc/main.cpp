@@ -34,7 +34,6 @@ void clear_screen(char fill = ' ') {
 
 static bool bottomField[2] = {false};
 static bool currentFrame = false;
-static bool duplicateFrameFoundPrev = false;
 
 bool paletteSet[256] = {false};
 u16 palette[2][256] = {0};
@@ -213,8 +212,6 @@ void convertFrame(int b, unsigned width, std::vector<unsigned char> image) {
 			bottomField[b] = !bottomField[b];
 		}
 	}
-
-	currentFrame = !currentFrame;
 }
 
 int main(int argc, char **argv) {
@@ -810,10 +807,12 @@ int main(int argc, char **argv) {
 					}
 				}
 
+				currentFrame = !currentFrame;
+
 				if (num > 1) {
 					frameOffsetTable[num] = frameOffsetTable[num-1];
 				}
-				if ((num > 0) && !duplicateFrameFoundPrev) {
+				if ((num > 0) && !duplicateFrameFound) {
 					if (!rvidHeader.bmpMode) {
 						frameOffsetTable[num] += 0x200;
 					}
@@ -826,9 +825,8 @@ int main(int argc, char **argv) {
 						compressedFrameSizeTable16[num] = frameFileSize;
 					}
 				}
-				previousFrameFileSize = frameFileSize;
-				duplicateFrameFoundPrev = duplicateFrameFound;
 				if (!duplicateFrameFound) {
+					previousFrameFileSize = frameFileSize;
 					if (!rvidHeader.bmpMode) {
 						tempFramesSize += 0x200;
 					}
