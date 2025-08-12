@@ -14,6 +14,8 @@
 #include "lz77.h"
 #include "inifile.h"
 
+#define lowHeightForDoubleFps 108
+
 typedef uint32_t u32;
 typedef uint16_t u16;
 typedef uint8_t u8;
@@ -362,7 +364,7 @@ int main(int argc, char **argv) {
 		printf("- Large file size\n");
 		printf("- Does not support screen filters\n");
 		printf("- No additional tools needed\n\n");
-		if (rvidHeader.vRes <= 96) {
+		if (rvidHeader.vRes <= lowHeightForDoubleFps) {
 			printf("3: Unlimited (16-bit BMP, RGB565)\n- Frame Rate Limit: ");
 			printf(rvidHeader.dualScreen ? "14.98" : "29.97");
 			printf(" FPS\n");
@@ -383,7 +385,7 @@ int main(int argc, char **argv) {
 				rvidHeader.bmpMode = 1;
 				break;
 			}
-			if (rvidHeader.vRes <= 96) {
+			if (rvidHeader.vRes <= lowHeightForDoubleFps) {
 				if (GetKeyState('3') & 0x8000) {
 					rvidHeader.bmpMode = 2;
 					break;
@@ -466,7 +468,7 @@ int main(int argc, char **argv) {
 	}
 
 	int fpsLimitForInterlaced = (rvidHeader.dualScreen ? 15 : 30);
-	if (rvidHeader.vRes <= 96) {
+	if (rvidHeader.vRes <= lowHeightForDoubleFps) {
 		fpsLimitForInterlaced *= 2;
 	}
 	if (rvidHeader.bmpMode) {
@@ -474,7 +476,7 @@ int main(int argc, char **argv) {
 	}
 	rvidHeader.interlaced = (rvidHeader.fps > fpsLimitForInterlaced) ? 1 : 0;
 	int fpsLimitForCompressionSupport = (rvidHeader.dualScreen ? 12 : 24);
-	if (rvidHeader.vRes <= 96) {
+	if (rvidHeader.vRes <= lowHeightForDoubleFps) {
 		fpsLimitForCompressionSupport *= 2;
 	}
 	if (rvidHeader.bmpMode) {
@@ -485,7 +487,7 @@ int main(int argc, char **argv) {
 		framesCompressed = info.GetInt("RVID", "COMPRESSED", 2);
 	}
 
-	if ((rvidHeader.vRes > 96) && rvidHeader.interlaced) {
+	if ((rvidHeader.vRes > lowHeightForDoubleFps) && rvidHeader.interlaced) {
 		rvidHeader.vRes /= 2;
 	}
 
