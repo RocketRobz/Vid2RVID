@@ -351,14 +351,14 @@ int main(int argc, char **argv) {
 		printf("1: 256 (8-bit BMP, RGB565)\n- Frame Rate Limit: ");
 		printf(rvidHeader.dualScreen ? "29.97" : "59.94");
 		printf(" FPS\n");
-		printf("- Quality varies by video frame\n");
+		printf("- Quality depends on the content\n");
 		printf("- Recommended due to low file size and high frame rate support\n");
 		printf("- Supports screen filters\n");
 		printf("- Requires an installation of ImageMagick (with application directory added to system path)\n\n");
 		printf("2: Unlimited (16-bit BMP, RGB555)\n- Frame Rate Limit: ");
 		printf(rvidHeader.dualScreen ? "14.98" : "29.97");
 		printf(" FPS\n");
-		printf("- Consistent high quality\n");
+		printf("- High quality\n");
 		printf("- Large file size\n");
 		printf("- Does not support screen filters\n");
 		printf("- No additional tools needed\n\n");
@@ -366,7 +366,7 @@ int main(int argc, char **argv) {
 			printf("3: Unlimited (16-bit BMP, RGB565)\n- Frame Rate Limit: ");
 			printf(rvidHeader.dualScreen ? "14.98" : "29.97");
 			printf(" FPS\n");
-			printf("- Consistent high quality\n");
+			printf("- High quality\n");
 			printf("- Increased green color range\n");
 			printf("- Large file size\n");
 			printf("- Does not support screen filters\n");
