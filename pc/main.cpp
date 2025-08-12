@@ -467,14 +467,14 @@ int main(int argc, char **argv) {
 		Sleep(10);
 	}
 
-	int fpsLimitForInterlaced = (rvidHeader.dualScreen ? 15 : 30);
+	int fpsLimitForProgressiveScan = (rvidHeader.dualScreen ? 15 : 30);
 	if (rvidHeader.vRes <= lowHeightForDoubleFps) {
-		fpsLimitForInterlaced *= 2;
+		fpsLimitForProgressiveScan *= 2;
 	}
 	if (rvidHeader.bmpMode) {
-		fpsLimitForInterlaced /= 2;
+		fpsLimitForProgressiveScan /= 2;
 	}
-	rvidHeader.interlaced = (rvidHeader.fps > fpsLimitForInterlaced) ? 1 : 0;
+	rvidHeader.interlaced = (rvidHeader.fps > fpsLimitForProgressiveScan) ? 1 : 0;
 	int fpsLimitForCompressionSupport = (rvidHeader.dualScreen ? 12 : 24);
 	if (rvidHeader.vRes <= lowHeightForDoubleFps) {
 		fpsLimitForCompressionSupport *= 2;
