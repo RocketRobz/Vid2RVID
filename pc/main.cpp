@@ -760,12 +760,6 @@ int main(int argc, char **argv) {
 				std::vector<unsigned char> image;
 				unsigned width, height;
 				lodepng::decode(image, width, height, framePath);
-				if (rvidHeader.vRes == 0) {
-					rvidHeader.vRes = (u8)height;
-					if (rvidHeader.interlaced) {
-						rvidHeader.vRes /= 2;
-					}
-				}
 
 				if ((b == 0) && ((i % 500) == 0)) printf("%i/%i\n", i, foundFrames);
 
