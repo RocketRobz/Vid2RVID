@@ -827,6 +827,7 @@ int main(int argc, char **argv) {
 					}
 				}
 				previousFrameFileSize = frameFileSize;
+				duplicateFrameFoundPrev = duplicateFrameFound;
 				if (!duplicateFrameFound) {
 					if (!rvidHeader.bmpMode) {
 						tempFramesSize += 0x200;
@@ -840,8 +841,6 @@ int main(int argc, char **argv) {
 				if ((b == 0) && rvidHeader.dualScreen) {
 					sprintf(framePath, "%s/bottom/frame%i.png", framesFolder, i);
 				}
-
-				duplicateFrameFoundPrev = duplicateFrameFound;
 			}
 		} else {
 			break;
