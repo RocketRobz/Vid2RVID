@@ -342,8 +342,8 @@ int main(int argc, char **argv) {
 	bool reviewInformation = false;
 	bool bmpModeEntered = false;
 
-	if ((rvidHeader.vRes > 96) && (rvidHeader.bmpMode == 2)) {
-		rvidHeader.bmpMode--; // Fallback to 16-bit BMP, RGB555
+	if ((rvidHeader.vRes > lowHeightForDoubleFps) && ((rvidHeader.bmpMode == 1) || (rvidHeader.bmpMode == 2))) {
+		rvidHeader.bmpMode = 0; // Fallback to 256 colors
 	}
 
 	if (rvidHeader.bmpMode == 3) {
@@ -357,14 +357,14 @@ int main(int argc, char **argv) {
 		printf("- Recommended due to low file size and high frame rate support\n");
 		printf("- Supports screen filters\n");
 		printf("- Requires an installation of ImageMagick (with application directory added to system path)\n\n");
-		printf("2: Unlimited (16-bit BMP, RGB555)\n- Frame Rate Limit: ");
-		printf(rvidHeader.dualScreen ? "14.98" : "29.97");
-		printf(" FPS\n");
-		printf("- High quality\n");
-		printf("- Large file size\n");
-		printf("- Does not support screen filters\n");
-		printf("- No additional tools needed\n\n");
 		if (rvidHeader.vRes <= lowHeightForDoubleFps) {
+			printf("2: Unlimited (16-bit BMP, RGB555)\n- Frame Rate Limit: ");
+			printf(rvidHeader.dualScreen ? "14.98" : "29.97");
+			printf(" FPS\n");
+			printf("- High quality\n");
+			printf("- Large file size\n");
+			printf("- Does not support screen filters\n");
+			printf("- No additional tools needed\n\n");
 			printf("3: Unlimited (16-bit BMP, RGB565)\n- Frame Rate Limit: ");
 			printf(rvidHeader.dualScreen ? "14.98" : "29.97");
 			printf(" FPS\n");
@@ -373,6 +373,8 @@ int main(int argc, char **argv) {
 			printf("- Large file size\n");
 			printf("- Does not support screen filters\n");
 			printf("- No additional tools needed\n");
+		} else {
+			printf("This is the only option available due to the video height being over 108px.\n");
 		}
 		Sleep(100);
 
@@ -381,11 +383,11 @@ int main(int argc, char **argv) {
 				rvidHeader.bmpMode = 0;
 				break;
 			}
-			if (GetKeyState('2') & 0x8000) {
-				rvidHeader.bmpMode = 1;
-				break;
-			}
 			if (rvidHeader.vRes <= lowHeightForDoubleFps) {
+				if (GetKeyState('2') & 0x8000) {
+					rvidHeader.bmpMode = 1;
+					break;
+				}
 				if (GetKeyState('3') & 0x8000) {
 					rvidHeader.bmpMode = 2;
 					break;
