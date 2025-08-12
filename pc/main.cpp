@@ -386,11 +386,18 @@ int main(int argc, char **argv) {
 		printf("What is the video's frame rate?\n");
 		printf("1: 11.988 FPS\n");
 		printf("2: 14.98 FPS\n");
-		printf("3: 23.976 FPS\n");
-		printf("4: 29.97 FPS\n");
-		if (!rvidHeader.dualScreen) {
-			printf("5: 47.952 FPS\n");
-			printf("6: 59.94 FPS\n");
+		if (rvidHeader.bmpMode) {
+			if (!rvidHeader.dualScreen) {
+				printf("3: 23.976 FPS\n");
+				printf("4: 29.97 FPS\n");
+			}
+		} else {
+			printf("3: 23.976 FPS\n");
+			printf("4: 29.97 FPS\n");
+			if (!rvidHeader.dualScreen) {
+				printf("5: 47.952 FPS\n");
+				printf("6: 59.94 FPS\n");
+			}
 		}
 		Sleep(100);
 
@@ -403,22 +410,35 @@ int main(int argc, char **argv) {
 				rvidHeader.fps = 15;
 				break;
 			}
-			if (GetKeyState('3') & 0x8000) {
-				rvidHeader.fps = 24;
-				break;
-			}
-			if (GetKeyState('4') & 0x8000) {
-				rvidHeader.fps = 30;
-				break;
-			}
-			if (!rvidHeader.dualScreen) {
-				if (GetKeyState('5') & 0x8000) {
-					rvidHeader.fps = 48;
+			if (rvidHeader.bmpMode) {
+				if (!rvidHeader.dualScreen) {
+					if (GetKeyState('3') & 0x8000) {
+						rvidHeader.fps = 24;
+						break;
+					}
+					if (GetKeyState('4') & 0x8000) {
+						rvidHeader.fps = 30;
+						break;
+					}
+				}
+			} else {
+				if (GetKeyState('3') & 0x8000) {
+					rvidHeader.fps = 24;
 					break;
 				}
-				if (GetKeyState('6') & 0x8000) {
-					rvidHeader.fps = 60;
+				if (GetKeyState('4') & 0x8000) {
+					rvidHeader.fps = 30;
 					break;
+				}
+				if (!rvidHeader.dualScreen) {
+					if (GetKeyState('5') & 0x8000) {
+						rvidHeader.fps = 48;
+						break;
+					}
+					if (GetKeyState('6') & 0x8000) {
+						rvidHeader.fps = 60;
+						break;
+					}
 				}
 			}
 			Sleep(10);
