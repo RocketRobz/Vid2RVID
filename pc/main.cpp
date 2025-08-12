@@ -605,9 +605,9 @@ int main(int argc, char **argv) {
 				case 1:
 					printf("Unlimited (16-bit BMP, RGB555)");
 					break;
-				/* case 2:
+				case 2:
 					printf("Unlimited (16-bit BMP, RGB565)");
-					break; */
+					break;
 			}
 			printf("\n");
 		}
