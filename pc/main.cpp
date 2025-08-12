@@ -428,18 +428,37 @@ int main(int argc, char **argv) {
 		Sleep(10);
 	}
 
-	rvidHeader.vRes = 0;
-	rvidHeader.interlaced = (rvidHeader.fps > (rvidHeader.dualScreen ? 15 : 30)) ? 1 : 0;
-	int fpsLimitForCompressionSupport = 24;
-	if (rvidHeader.bmpMode) {
-		fpsLimitForCompressionSupport /= 2;
+	{
+		sprintf(framePath, "%s/frame0.png", framesFolder);
+
+		std::vector<unsigned char> image;
+		unsigned width, height;
+		lodepng::decode(image, width, height, framePath);
+		rvidHeader.vRes = (u8)height;
 	}
-	if (rvidHeader.dualScreen) {
+
+	int fpsLimitForInterlaced = (rvidHeader.dualScreen ? 15 : 30);
+	if (rvidHeader.vRes <= 96) {
+		fpsLimitForInterlaced *= 2;
+	}
+	if (rvidHeader.bmpMode) {
+		fpsLimitForInterlaced /= 2;
+	}
+	rvidHeader.interlaced = (rvidHeader.fps > fpsLimitForInterlaced) ? 1 : 0;
+	int fpsLimitForCompressionSupport = (rvidHeader.dualScreen ? 12 : 24);
+	if (rvidHeader.vRes <= 96) {
+		fpsLimitForCompressionSupport *= 2;
+	}
+	if (rvidHeader.bmpMode) {
 		fpsLimitForCompressionSupport /= 2;
 	}
 	int framesCompressed = 0;
 	if (rvidHeader.fps <= fpsLimitForCompressionSupport) {
 		framesCompressed = info.GetInt("RVID", "COMPRESSED", 2);
+	}
+
+	if ((rvidHeader.vRes > 96) && rvidHeader.interlaced) {
+		rvidHeader.vRes /= 2;
 	}
 
 	/* if (rvidHeader.interlaced == 2) {
