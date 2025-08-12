@@ -328,8 +328,21 @@ int main(int argc, char **argv) {
 	rvidHeader.bmpMode = info.GetInt("RVID", "BMP_MODE", 3);
 	rvidHeader.fps = info.GetInt("RVID", "FPS", 0);
 
+	{
+		sprintf(framePath, "%s/frame0.png", framesFolder);
+
+		std::vector<unsigned char> image;
+		unsigned width, height;
+		lodepng::decode(image, width, height, framePath);
+		rvidHeader.vRes = (u8)height;
+	}
+
 	bool reviewInformation = false;
 	bool bmpModeEntered = false;
+
+	if ((rvidHeader.vRes > 96) && (rvidHeader.bmpMode == 2)) {
+		rvidHeader.bmpMode--; // Fallback to 16-bit BMP, RGB555
+	}
 
 	if (rvidHeader.bmpMode == 3) {
 		clear_screen();
@@ -349,14 +362,16 @@ int main(int argc, char **argv) {
 		printf("- Large file size\n");
 		printf("- Does not support screen filters\n");
 		printf("- No additional tools needed\n\n");
-		printf("3: Unlimited (16-bit BMP, RGB565)\n- Frame Rate Limit: ");
-		printf(rvidHeader.dualScreen ? "14.98" : "29.97");
-		printf(" FPS\n");
-		printf("- Consistent high quality\n");
-		printf("- Increased green color range\n");
-		printf("- Large file size\n");
-		printf("- Does not support screen filters\n");
-		printf("- No additional tools needed\n");
+		if (rvidHeader.vRes <= 96) {
+			printf("3: Unlimited (16-bit BMP, RGB565)\n- Frame Rate Limit: ");
+			printf(rvidHeader.dualScreen ? "14.98" : "29.97");
+			printf(" FPS\n");
+			printf("- Consistent high quality\n");
+			printf("- Increased green color range\n");
+			printf("- Large file size\n");
+			printf("- Does not support screen filters\n");
+			printf("- No additional tools needed\n");
+		}
 		Sleep(100);
 
 		while (1) {
@@ -368,9 +383,11 @@ int main(int argc, char **argv) {
 				rvidHeader.bmpMode = 1;
 				break;
 			}
-			if (GetKeyState('3') & 0x8000) {
-				rvidHeader.bmpMode = 2;
-				break;
+			if (rvidHeader.vRes <= 96) {
+				if (GetKeyState('3') & 0x8000) {
+					rvidHeader.bmpMode = 2;
+					break;
+				}
 			}
 			Sleep(10);
 		}
@@ -446,15 +463,6 @@ int main(int argc, char **argv) {
 		reviewInformation = true;
 		rvidFpsEntered = true;
 		Sleep(10);
-	}
-
-	{
-		sprintf(framePath, "%s/frame0.png", framesFolder);
-
-		std::vector<unsigned char> image;
-		unsigned width, height;
-		lodepng::decode(image, width, height, framePath);
-		rvidHeader.vRes = (u8)height;
 	}
 
 	int fpsLimitForInterlaced = (rvidHeader.dualScreen ? 15 : 30);
@@ -595,9 +603,9 @@ int main(int argc, char **argv) {
 				case 1:
 					printf("Unlimited (16-bit BMP, RGB555)");
 					break;
-				case 2:
+				/* case 2:
 					printf("Unlimited (16-bit BMP, RGB565)");
-					break;
+					break; */
 			}
 			printf("\n");
 		}
