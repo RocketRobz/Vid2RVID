@@ -79,8 +79,8 @@ typedef struct rvidHeaderInfo {
 	u8 vRes;			    // Vertical resolution
 	u8 interlaced;		    // Is interlaced
 	u8 dualScreen;		    // Is dual screen video
-	u16 sampleRate;		    // Audio sample rate
-	u8 framesCompressed;	// Frames are compressed (unused)
+	u16 sampleRate;			// Audio sample rate
+	u8 audioBitMode;			// Audio format (0 = 8-bit, 1 = 16-bit)
 	u8 bmpMode;        		// 0 = 256 RGB565 colors, 1 = Unlimited RGB555 colors, 2 = Unlimited RGB565 colors
 	u32 compressedFrameSizeTableOffset;		// Offset of compressed frame size table
 	u32 soundOffset;		// Offset of sound stream
@@ -542,12 +542,14 @@ int main(int argc, char **argv) {
 	}
 
 	bool rvidSoundEntered = false;
+	bool rvidAudioBitModeEntered = false;
 
 	char soundPath[256];
 	sprintf(soundPath, "%s/sound.raw.pcm", framesFolder);
 	bool soundFound = false;
 	if (access(soundPath, F_OK) == 0) {
 		rvidHeader.sampleRate = info.GetInt("RVID", "AUDIO_HZ", 0);
+		rvidHeader.audioBitMode = info.GetInt("RVID", "AUDIO_BIT_MODE", 0);
 		if (rvidHeader.sampleRate == 0) {
 			clear_screen();
 			printf("What is the audio sample rate?\n");
@@ -590,9 +592,32 @@ int main(int argc, char **argv) {
 			rvidSoundEntered = true;
 			Sleep(10);
 		}
+		if (rvidHeader.audioBitMode == 0) {
+			clear_screen();
+			printf("What is the encoding of the audio?\n");
+			printf("1: 8-bit\n");
+			printf("2: 16-bit\n");
+			Sleep(100);
+
+			while (1) {
+				if (GetKeyState('1') & 0x8000) {
+					rvidHeader.audioBitMode = 1;
+					break;
+				}
+				if (GetKeyState('2') & 0x8000) {
+					rvidHeader.audioBitMode = 2;
+					break;
+				}
+				Sleep(10);
+			}
+			reviewInformation = true;
+			rvidAudioBitModeEntered = true;
+			Sleep(10);
+		}
 		soundFound = true;
 	} else {
 		rvidHeader.sampleRate = 0;
+		rvidHeader.audioBitMode = 0;
 	}
 
 	if (reviewInformation) {
@@ -642,8 +667,8 @@ int main(int argc, char **argv) {
 			printf(framesCompressed ? "Yes" : "No");
 			printf("\n");
 		}
-		if (rvidSoundEntered) {
-			printf("- Audio Quality: %ihz\n", rvidHeader.sampleRate);
+		if (rvidSoundEntered || rvidAudioBitModeEntered) {
+			printf("- Audio Quality: %ihz, %i-bit", rvidHeader.sampleRate, (rvidHeader.audioBitMode == 2) ? 16 : 8);
 		}
 		printf("\n");
 		printf("Y: Yes, save & proceed\n");
@@ -672,6 +697,9 @@ int main(int argc, char **argv) {
 		}
 		if (rvidSoundEntered) {
 			info.SetInt("RVID", "AUDIO_HZ", rvidHeader.sampleRate);
+		}
+		if (rvidAudioBitModeEntered) {
+			info.SetInt("RVID", "AUDIO_BIT_MODE", rvidHeader.audioBitMode);
 		}
 		info.SaveIniFileModified(infoIniPath);
 	}
