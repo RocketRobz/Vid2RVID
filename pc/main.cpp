@@ -549,7 +549,7 @@ int main(int argc, char **argv) {
 	bool soundFound = false;
 	if (access(soundPath, F_OK) == 0) {
 		rvidHeader.sampleRate = info.GetInt("RVID", "AUDIO_HZ", 0);
-		rvidHeader.audioBitMode = info.GetInt("RVID", "AUDIO_BIT_MODE", 0);
+		rvidHeader.audioBitMode = info.GetInt("RVID", "AUDIO_BIT_MODE", 2);
 		if (rvidHeader.sampleRate == 0) {
 			clear_screen();
 			printf("What is the audio sample rate?\n");
@@ -592,7 +592,7 @@ int main(int argc, char **argv) {
 			rvidSoundEntered = true;
 			Sleep(10);
 		}
-		if (rvidHeader.audioBitMode == 0) {
+		if (rvidHeader.audioBitMode == 2) {
 			clear_screen();
 			printf("What is the encoding of the audio?\n");
 			printf("1: 8-bit\n");
@@ -601,11 +601,11 @@ int main(int argc, char **argv) {
 
 			while (1) {
 				if (GetKeyState('1') & 0x8000) {
-					rvidHeader.audioBitMode = 1;
+					rvidHeader.audioBitMode = 0;
 					break;
 				}
 				if (GetKeyState('2') & 0x8000) {
-					rvidHeader.audioBitMode = 2;
+					rvidHeader.audioBitMode = 1;
 					break;
 				}
 				Sleep(10);
@@ -668,7 +668,7 @@ int main(int argc, char **argv) {
 			printf("\n");
 		}
 		if (rvidSoundEntered || rvidAudioBitModeEntered) {
-			printf("- Audio Quality: %ihz, %i-bit", rvidHeader.sampleRate, (rvidHeader.audioBitMode == 2) ? 16 : 8);
+			printf("- Audio Quality: %ihz, %i-bit", rvidHeader.sampleRate, (rvidHeader.audioBitMode == 1) ? 16 : 8);
 		}
 		printf("\n");
 		printf("Y: Yes, save & proceed\n");
