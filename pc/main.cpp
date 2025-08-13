@@ -353,7 +353,7 @@ int main(int argc, char **argv) {
 		printf("1: 256 (8-bit BMP, RGB565)\n- Frame Rate Limit: ");
 		printf(rvidHeader.dualScreen ? "29.97" : "59.94");
 		printf(" FPS\n");
-		printf("- Quality depends on the content\n");
+		printf("- Good quality\n");
 		printf("- Recommended due to low file size and high frame rate support\n");
 		printf("- Supports screen filters\n");
 		printf("- Requires an installation of ImageMagick (with application directory added to system path)\n\n");
