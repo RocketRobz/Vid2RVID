@@ -329,6 +329,7 @@ int main(int argc, char **argv) {
 	rvidHeader.frames = foundFrames+1;
 	rvidHeader.bmpMode = info.GetInt("RVID", "BMP_MODE", 3);
 	rvidHeader.fps = info.GetInt("RVID", "FPS", 0);
+	bool fpsReduceBy01 = info.GetInt("RVID", "FPS_REDUCE_BY_0.1", 1);
 
 	{
 		sprintf(framePath, "%s/frame0.png", framesFolder);
@@ -405,24 +406,25 @@ int main(int argc, char **argv) {
 	if (rvidHeader.fps == 0) {
 		clear_screen();
 		printf("What is the video's frame rate?\n");
-		printf("1: 11.988 FPS\n");
-		printf("2: 14.98 FPS\n");
+		printf("1: 11.988 FPS (Right -> key held: 12 FPS)\n");
+		printf("2: 14.98 FPS (Right -> key held: 15 FPS)\n");
 		if (rvidHeader.bmpMode) {
 			if (!rvidHeader.dualScreen) {
-				printf("3: 23.976 FPS\n");
-				printf("4: 29.97 FPS\n");
+				printf("3: 23.976 FPS (Right -> key held: 24 FPS)\n");
+				printf("4: 29.97 FPS (Right -> key held: 32 FPS)\n");
 			}
 		} else {
-			printf("3: 23.976 FPS\n");
-			printf("4: 29.97 FPS\n");
+			printf("3: 23.976 FPS (Right -> key held: 24 FPS)\n");
+			printf("4: 29.97 FPS (Right -> key held: 30 FPS)\n");
 			if (!rvidHeader.dualScreen) {
-				printf("5: 47.952 FPS\n");
-				printf("6: 59.94 FPS\n");
+				printf("5: 47.952 FPS (Right -> key held: 48 FPS)\n");
+				printf("6: 59.94 FPS (Right -> key held: 60 FPS)\n");
 			}
 		}
 		Sleep(100);
 
 		while (1) {
+			fpsReduceBy01 = !(GetKeyState(VK_RIGHT) & 0x8000);
 			if (GetKeyState('1') & 0x8000) {
 				rvidHeader.fps = 12;
 				break;
@@ -642,22 +644,22 @@ int main(int argc, char **argv) {
 			printf("- Frame Rate: ");
 			switch (rvidHeader.fps) {
 				case 12:
-					printf("11.988");
+					printf(fpsReduceBy01 ? "11.988" : "12");
 					break;
 				case 15:
-					printf("14.98");
+					printf(fpsReduceBy01 ? "14.98" : "15");
 					break;
 				case 24:
-					printf("23.976");
+					printf(fpsReduceBy01 ? "23.976" : "24");
 					break;
 				case 30:
-					printf("29.97");
+					printf(fpsReduceBy01 ? "29.97" : "30");
 					break;
 				case 48:
-					printf("47.952");
+					printf(fpsReduceBy01 ? "47.952" : "48");
 					break;
 				case 60:
-					printf("59.94");
+					printf(fpsReduceBy01 ? "59.94" : "60");
 					break;
 			}
 			printf(" FPS\n");
@@ -691,6 +693,7 @@ int main(int argc, char **argv) {
 		}
 		if (rvidFpsEntered) {
 			info.SetInt("RVID", "FPS", rvidHeader.fps);
+			info.SetInt("RVID", "FPS_REDUCE_BY_0.1", fpsReduceBy01);
 		}
 		if (rvidCompressEntered) {
 			info.SetInt("RVID", "COMPRESSED", framesCompressed);
@@ -946,6 +949,10 @@ int main(int argc, char **argv) {
 		}
 
 		return 0;
+	}
+
+	if (fpsReduceBy01) {
+		rvidHeader.fps += 0x80;
 	}
 
 	// Write header
