@@ -635,7 +635,7 @@ int main(int argc, char **argv) {
 					printf("256 (8 BPP, RGB565)");
 					break;
 				case 1:
-					printf("Unlimited (16 BPP, RGB565)");
+					printf("Unlimited (16 BPP, RGB555)");
 					break;
 				case 2:
 					printf("Unlimited (16 BPP, RGB565)");
