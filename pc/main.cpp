@@ -547,7 +547,10 @@ int main(int argc, char **argv) {
 	bool rvidAudioBitModeEntered = false;
 
 	char soundPath[256];
-	sprintf(soundPath, "%s/sound.raw.pcm", framesFolder);
+	sprintf(soundPath, "%s/sound.raw", framesFolder);
+	if (access(soundPath, F_OK) != 0) {
+		sprintf(soundPath, "%s/sound.raw.pcm", framesFolder);
+	}
 	bool soundFound = false;
 	if (access(soundPath, F_OK) == 0) {
 		rvidHeader.sampleRate = info.GetInt("RVID", "AUDIO_HZ", 0);
