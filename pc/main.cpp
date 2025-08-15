@@ -81,7 +81,7 @@ typedef struct rvidHeaderInfo {
 	u8 dualScreen;		    // Is dual screen video
 	u16 sampleRate;			// Audio sample rate
 	u8 audioBitMode;		// 0 = 8-bit, 1 = 16-bit
-	u8 bmpMode;        		// 0 = 256 RGB565 colors, 1 = Unlimited RGB555 colors, 2 = Unlimited RGB565 colors
+	u8 bmpMode;        		// 0 = 8 BPP (RGB565), 1 = 16 BPP (RGB555), 2 = 16 BPP (RGB565)
 	u32 compressedFrameSizeTableOffset;		// Offset of compressed frame size table
 	u32 soundOffset;		// Offset of sound stream
 } rvidHeaderInfo;
@@ -351,7 +351,7 @@ int main(int argc, char **argv) {
 		clear_screen();
 		printf("Select the amount of colors to display on-screen.\n");
 		printf("(Dithering will be applied to look like more is on-screen.)\n\n");
-		printf("1: 256 (8-bit BMP, RGB565)\n- Frame Rate Limit: ");
+		printf("1: 256 (8 BPP, RGB565)\n- Frame Rate Limit: ");
 		printf(rvidHeader.dualScreen ? "29.97" : "59.94");
 		printf(" FPS\n");
 		printf("- Good quality\n");
@@ -359,14 +359,14 @@ int main(int argc, char **argv) {
 		printf("- Supports screen filters\n");
 		printf("- Requires an installation of ImageMagick (with application directory added to system path)\n\n");
 		if (rvidHeader.vRes <= lowHeightForDoubleFps) {
-			printf("2: Unlimited (16-bit BMP, RGB555)\n- Frame Rate Limit: ");
+			printf("2: Unlimited (16 BPP, RGB555)\n- Frame Rate Limit: ");
 			printf(rvidHeader.dualScreen ? "14.98" : "29.97");
 			printf(" FPS\n");
 			printf("- High quality\n");
 			printf("- Large file size\n");
 			printf("- Does not support screen filters\n");
 			printf("- No additional tools needed\n\n");
-			printf("3: Unlimited (16-bit BMP, RGB565)\n- Frame Rate Limit: ");
+			printf("3: Unlimited (16 BPP, RGB565)\n- Frame Rate Limit: ");
 			printf(rvidHeader.dualScreen ? "14.98" : "29.97");
 			printf(" FPS\n");
 			printf("- High quality\n");
