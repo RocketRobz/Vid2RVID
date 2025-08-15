@@ -632,13 +632,13 @@ int main(int argc, char **argv) {
 			printf("- Color Amount: ");
 			switch (rvidHeader.bmpMode) {
 				case 0:
-					printf("256 (8-bit BMP, RGB565)");
+					printf("256 (8 BPP, RGB565)");
 					break;
 				case 1:
-					printf("Unlimited (16-bit BMP, RGB555)");
+					printf("Unlimited (16 BPP, RGB565)");
 					break;
 				case 2:
-					printf("Unlimited (16-bit BMP, RGB565)");
+					printf("Unlimited (16 BPP, RGB565)");
 					break;
 			}
 			printf("\n");
