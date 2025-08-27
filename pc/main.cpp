@@ -330,6 +330,7 @@ int main(int argc, char **argv) {
 	rvidHeader.bmpMode = info.GetInt("RVID", "BMP_MODE", 3);
 	rvidHeader.fps = info.GetInt("RVID", "FPS", 0);
 	bool fpsReduceBy01 = info.GetInt("RVID", "FPS_REDUCE_BY_0.1", 1);
+	bool widthDoubled = false;
 
 	{
 		sprintf(framePath, "%s/frame0.png", framesFolder);
@@ -337,6 +338,7 @@ int main(int argc, char **argv) {
 		std::vector<unsigned char> image;
 		unsigned width, height;
 		lodepng::decode(image, width, height, framePath);
+		widthDoubled = (width == 512);
 		rvidHeader.vRes = (u8)height;
 	}
 
@@ -357,7 +359,6 @@ int main(int argc, char **argv) {
 		printf("- Good quality\n");
 		printf("- Recommended due to low file size and high frame rate support\n");
 		printf("- Supports screen filters\n");
-		printf("- Requires an installation of ImageMagick (with application directory added to system path)\n\n");
 		if (rvidHeader.vRes <= lowHeightForDoubleFps) {
 			printf("2: Unlimited (16 BPP, RGB555)\n- Frame Rate Limit: ");
 			printf(rvidHeader.dualScreen ? "14.98" : "29.97");
@@ -365,7 +366,6 @@ int main(int argc, char **argv) {
 			printf("- High quality\n");
 			printf("- Large file size\n");
 			printf("- Does not support screen filters\n");
-			printf("- No additional tools needed\n\n");
 			printf("3: Unlimited (16 BPP, RGB565)\n- Frame Rate Limit: ");
 			printf(rvidHeader.dualScreen ? "14.98" : "29.97");
 			printf(" FPS\n");
@@ -373,7 +373,6 @@ int main(int argc, char **argv) {
 			printf("- Increased green color range\n");
 			printf("- Large file size\n");
 			printf("- Does not support screen filters\n");
-			printf("- No additional tools needed\n");
 		} else {
 			printf("This is the only option available due to the video height being over 108px.\n");
 		}
@@ -710,16 +709,27 @@ int main(int argc, char **argv) {
 		info.SaveIniFileModified(infoIniPath);
 	}
 
-	if (!rvidHeader.bmpMode) {
+	// if (!rvidHeader.bmpMode)
+	{
 		char flagPath[256];
 		sprintf(flagPath, "%s/256colors", framesFolder);
-		if (access(flagPath, F_OK) != 0) {
+		const bool flagFound = (access(flagPath, F_OK) == 0);
+		if ((!rvidHeader.bmpMode && !flagFound) || widthDoubled) {
 			if (access("Process Frames.bat", F_OK) != 0) {
 				const u16 newLine = 0x0A0D;
 				const char* line1 = "@echo Processing frames, this may take a while...";
 				const char* line2 = "@cd \"";
 				const char* line2End = "\"";
-				const char* line3 = "@magick mogrify -ordered-dither checks,32,64,32 -colors 256 *.png";
+				const char* line3;
+				if (!rvidHeader.bmpMode && !flagFound) {
+					if (widthDoubled) {
+						line3 = "@magick mogrify -resize 50% -ordered-dither checks,32,64,32 -colors 256 *.png";
+					} else {
+						line3 = "@magick mogrify -ordered-dither checks,32,64,32 -colors 256 *.png";
+					}
+				} else if (widthDoubled) {
+					line3 = "@magick mogrify -resize 50% *.png";
+				}
 				const char* line3_2 = "@cd bottom";
 				const char* line3_3 = "@cd..";
 				const char* line4 = "@mkdir 256colors";
