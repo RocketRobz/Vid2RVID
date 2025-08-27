@@ -720,7 +720,7 @@ int main(int argc, char **argv) {
 				const char* line1 = "@echo Processing frames, this may take a while...";
 				const char* line2 = "@cd \"";
 				const char* line2End = "\"";
-				const char* line3;
+				const char* line3 = "";
 				if (!rvidHeader.bmpMode && !flagFound) {
 					if (widthDoubled) {
 						line3 = "@magick mogrify -resize 50% -ordered-dither checks,32,64,32 -colors 256 *.png";
