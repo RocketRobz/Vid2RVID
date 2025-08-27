@@ -723,12 +723,12 @@ int main(int argc, char **argv) {
 				const char* line3 = "";
 				if (!rvidHeader.bmpMode && !flagFound) {
 					if (widthDoubled) {
-						line3 = "@magick mogrify -resize 50% -ordered-dither checks,32,64,32 -colors 256 *.png";
+						line3 = "@magick mogrify -resize 256 -ordered-dither checks,32,64,32 -colors 256 *.png";
 					} else {
 						line3 = "@magick mogrify -ordered-dither checks,32,64,32 -colors 256 *.png";
 					}
 				} else if (widthDoubled) {
-					line3 = "@magick mogrify -resize 50% *.png";
+					line3 = "@magick mogrify -resize 256 *.png";
 				}
 				const char* line3_2 = "@cd bottom";
 				const char* line3_3 = "@cd..";
