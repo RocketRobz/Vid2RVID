@@ -761,8 +761,10 @@ int main(int argc, char **argv) {
 					fwrite(line3_3, 1, strlen(line3_3), batFile);
 					fwrite(&newLine, 2, 1, batFile);
 				}
-				fwrite(line4, 1, strlen(line4), batFile);
-				fwrite(&newLine, 2, 1, batFile);
+				if (!rvidHeader.bmpMode && !flagFound) {
+					fwrite(line4, 1, strlen(line4), batFile);
+					fwrite(&newLine, 2, 1, batFile);
+				}
 				fwrite(line5, 1, strlen(line5), batFile);
 				fwrite(&newLine, 2, 1, batFile);
 				fwrite(line6, 1, strlen(line6), batFile);
