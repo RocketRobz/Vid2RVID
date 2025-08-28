@@ -340,6 +340,9 @@ int main(int argc, char **argv) {
 		lodepng::decode(image, width, height, framePath);
 		widthDoubled = (width == 512);
 		rvidHeader.vRes = (u8)height;
+		if (widthDoubled) {
+			rvidHeader.vRes /= 2;
+		}
 	}
 
 	bool reviewInformation = false;
