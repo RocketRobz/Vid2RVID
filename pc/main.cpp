@@ -348,37 +348,27 @@ int main(int argc, char **argv) {
 	bool reviewInformation = false;
 	bool bmpModeEntered = false;
 
-	if ((rvidHeader.vRes > lowHeightForDoubleFps) && ((rvidHeader.bmpMode == 1) || (rvidHeader.bmpMode == 2))) {
-		rvidHeader.bmpMode = 0; // Fallback to 256 colors
-	}
-
 	if (rvidHeader.bmpMode == 3) {
 		clear_screen();
 		printf("Select the amount of colors to display on-screen.\n");
 		printf("(Dithering will be applied to look like more is on-screen.)\n\n");
-		printf("1: 256 (8 BPP, RGB565)\n- Frame Rate Limit: ");
-		printf(rvidHeader.dualScreen ? "29.97" : "59.94");
-		printf(" FPS\n");
+		printf("1: 256 (8 BPP, RGB565)\n- Frame Rate Limit: 59.94 FPS\n");
 		printf("- Good quality\n");
 		printf("- Recommended due to low file size and high frame rate support\n");
 		printf("- Supports screen filters\n");
-		if (rvidHeader.vRes <= lowHeightForDoubleFps) {
-			printf("2: Unlimited (16 BPP, RGB555)\n- Frame Rate Limit: ");
-			printf(rvidHeader.dualScreen ? "14.98" : "29.97");
-			printf(" FPS\n");
-			printf("- High quality\n");
-			printf("- Large file size\n");
-			printf("- Does not support screen filters\n");
-			printf("3: Unlimited (16 BPP, RGB565)\n- Frame Rate Limit: ");
-			printf(rvidHeader.dualScreen ? "14.98" : "29.97");
-			printf(" FPS\n");
-			printf("- High quality\n");
-			printf("- Increased green color range\n");
-			printf("- Large file size\n");
-			printf("- Does not support screen filters\n");
-		} else {
-			printf("This is the only option available due to the video height being over %ipx.\n", lowHeightForDoubleFps);
-		}
+		printf("2: Unlimited (16 BPP, RGB555)\n- Frame Rate Limit: ");
+		printf(rvidHeader.dualScreen ? "29.97" : "59.94");
+		printf(" FPS\n");
+		printf("- High quality\n");
+		printf("- Large file size\n");
+		printf("- Does not support screen filters\n");
+		printf("3: Unlimited (16 BPP, RGB565)\n- Frame Rate Limit: ");
+		printf(rvidHeader.dualScreen ? "29.97" : "59.94");
+		printf(" FPS\n");
+		printf("- High quality\n");
+		printf("- Increased green color range\n");
+		printf("- Large file size\n");
+		printf("- Does not support screen filters\n");
 		Sleep(100);
 
 		while (1) {
@@ -386,15 +376,13 @@ int main(int argc, char **argv) {
 				rvidHeader.bmpMode = 0;
 				break;
 			}
-			if (rvidHeader.vRes <= lowHeightForDoubleFps) {
-				if (GetKeyState('2') & 0x8000) {
-					rvidHeader.bmpMode = 1;
-					break;
-				}
-				if (GetKeyState('3') & 0x8000) {
-					rvidHeader.bmpMode = 2;
-					break;
-				}
+			if (GetKeyState('2') & 0x8000) {
+				rvidHeader.bmpMode = 1;
+				break;
+			}
+			if (GetKeyState('3') & 0x8000) {
+				rvidHeader.bmpMode = 2;
+				break;
 			}
 			Sleep(10);
 		}
@@ -410,18 +398,11 @@ int main(int argc, char **argv) {
 		printf("What is the video's frame rate?\n");
 		printf("1: 11.988 FPS (Right -> key held: 12 FPS)\n");
 		printf("2: 14.98 FPS (Right -> key held: 15 FPS)\n");
-		if (rvidHeader.bmpMode) {
-			if (!rvidHeader.dualScreen) {
-				printf("3: 23.976 FPS (Right -> key held: 24 FPS)\n");
-				printf("4: 29.97 FPS (Right -> key held: 32 FPS)\n");
-			}
-		} else {
-			printf("3: 23.976 FPS (Right -> key held: 24 FPS)\n");
-			printf("4: 29.97 FPS (Right -> key held: 30 FPS)\n");
-			if (!rvidHeader.dualScreen) {
-				printf("5: 47.952 FPS (Right -> key held: 48 FPS)\n");
-				printf("6: 59.94 FPS (Right -> key held: 60 FPS)\n");
-			}
+		printf("3: 23.976 FPS (Right -> key held: 24 FPS)\n");
+		printf("4: 29.97 FPS (Right -> key held: 30 FPS)\n");
+		if (!rvidHeader.dualScreen || !rvidHeader.bmpMode) {
+			printf("5: 47.952 FPS (Right -> key held: 48 FPS)\n");
+			printf("6: 59.94 FPS (Right -> key held: 60 FPS)\n");
 		}
 		Sleep(100);
 
@@ -435,35 +416,22 @@ int main(int argc, char **argv) {
 				rvidHeader.fps = 15;
 				break;
 			}
-			if (rvidHeader.bmpMode) {
-				if (!rvidHeader.dualScreen) {
-					if (GetKeyState('3') & 0x8000) {
-						rvidHeader.fps = 24;
-						break;
-					}
-					if (GetKeyState('4') & 0x8000) {
-						rvidHeader.fps = 30;
-						break;
-					}
-				}
-			} else {
-				if (GetKeyState('3') & 0x8000) {
-					rvidHeader.fps = 24;
+			if (GetKeyState('3') & 0x8000) {
+				rvidHeader.fps = 24;
+				break;
+			}
+			if (GetKeyState('4') & 0x8000) {
+				rvidHeader.fps = 30;
+				break;
+			}
+			if (!rvidHeader.dualScreen || !rvidHeader.bmpMode) {
+				if (GetKeyState('5') & 0x8000) {
+					rvidHeader.fps = 48;
 					break;
 				}
-				if (GetKeyState('4') & 0x8000) {
-					rvidHeader.fps = 30;
+				if (GetKeyState('6') & 0x8000) {
+					rvidHeader.fps = 60;
 					break;
-				}
-				if (!rvidHeader.dualScreen) {
-					if (GetKeyState('5') & 0x8000) {
-						rvidHeader.fps = 48;
-						break;
-					}
-					if (GetKeyState('6') & 0x8000) {
-						rvidHeader.fps = 60;
-						break;
-					}
 				}
 			}
 			Sleep(10);
@@ -473,10 +441,7 @@ int main(int argc, char **argv) {
 		Sleep(10);
 	}
 
-	int fpsLimitForProgressiveScan = (rvidHeader.dualScreen ? 15 : 30);
-	if (rvidHeader.vRes <= lowHeightForDoubleFps) {
-		fpsLimitForProgressiveScan *= 2;
-	}
+	int fpsLimitForProgressiveScan = (rvidHeader.dualScreen ? 30 : 60);
 	if (rvidHeader.bmpMode) {
 		fpsLimitForProgressiveScan /= 2;
 	}
@@ -484,9 +449,6 @@ int main(int argc, char **argv) {
 	int fpsLimitForCompressionSupport = (rvidHeader.dualScreen ? 12 : 24);
 	if (rvidHeader.vRes <= lowHeightForDoubleFps) {
 		fpsLimitForCompressionSupport *= 2;
-	}
-	if (rvidHeader.bmpMode) {
-		fpsLimitForCompressionSupport /= 2;
 	}
 	int framesCompressed = 0;
 	if (rvidHeader.fps <= fpsLimitForCompressionSupport) {
