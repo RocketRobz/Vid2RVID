@@ -377,7 +377,7 @@ int main(int argc, char **argv) {
 			printf("- Large file size\n");
 			printf("- Does not support screen filters\n");
 		} else {
-			printf("This is the only option available due to the video height being over 108px.\n");
+			printf("This is the only option available due to the video height being over %ipx.\n", lowHeightForDoubleFps);
 		}
 		Sleep(100);
 
