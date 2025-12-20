@@ -14,7 +14,7 @@
 #include "lz77.h"
 #include "inifile.h"
 
-#define lowHeightForDoubleFps 108
+#define lowHeightForDoubleFps 144
 
 typedef uint32_t u32;
 typedef uint16_t u16;
