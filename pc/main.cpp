@@ -493,7 +493,7 @@ int main(int argc, char **argv) {
 		framesCompressed = info.GetInt("RVID", "COMPRESSED", 2);
 	}
 
-	if ((rvidHeader.vRes > lowHeightForDoubleFps) && rvidHeader.interlaced) {
+	if (rvidHeader.interlaced) {
 		rvidHeader.vRes /= 2;
 	}
 
