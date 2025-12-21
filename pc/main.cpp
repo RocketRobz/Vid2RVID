@@ -14,7 +14,7 @@
 #include "lz77.h"
 #include "inifile.h"
 
-#define lowHeightForDoubleFps 144
+#define lowHeightForDoubleFps 108
 
 typedef uint32_t u32;
 typedef uint16_t u16;
@@ -447,7 +447,13 @@ int main(int argc, char **argv) {
 	}
 	rvidHeader.interlaced = (rvidHeader.fps > fpsLimitForProgressiveScan) ? 1 : 0;
 	int fpsLimitForCompressionSupport = (rvidHeader.dualScreen ? 12 : 24);
+	if (rvidHeader.bmpMode) {
+		fpsLimitForCompressionSupport /= 2;
+	}
 	if (rvidHeader.vRes <= lowHeightForDoubleFps) {
+		fpsLimitForCompressionSupport *= 2;
+	}
+	if (rvidHeader.interlaced) {
 		fpsLimitForCompressionSupport *= 2;
 	}
 	int framesCompressed = 0;
