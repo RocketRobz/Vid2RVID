@@ -452,6 +452,8 @@ int main(int argc, char **argv) {
 	}
 	if (rvidHeader.vRes <= lowHeightForDoubleFps) {
 		fpsLimitForCompressionSupport *= 2;
+	} else if (rvidHeader.bmpMode && rvidHeader.vRes > 144) {
+		fpsLimitForCompressionSupport /= 2;
 	}
 	if (rvidHeader.interlaced) {
 		fpsLimitForCompressionSupport *= 2;
