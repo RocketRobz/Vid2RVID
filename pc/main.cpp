@@ -330,6 +330,7 @@ int main(int argc, char **argv) {
 	rvidHeader.bmpMode = info.GetInt("RVID", "BMP_MODE", 3);
 	rvidHeader.fps = info.GetInt("RVID", "FPS", 0);
 	bool fpsReduceBy01 = info.GetInt("RVID", "FPS_REDUCE_BY_0.1", 1);
+	bool dsRefreshRate = false;
 	bool widthDoubled = false;
 
 	{
@@ -401,10 +402,13 @@ int main(int argc, char **argv) {
 		printf("1: 11.988 FPS (Right -> key held: 12 FPS)\n");
 		printf("2: 14.98 FPS (Right -> key held: 15 FPS)\n");
 		printf("3: 23.976 FPS (Right -> key held: 24 FPS)\n");
-		printf("4: 29.97 FPS (Right -> key held: 30 FPS)\n");
+		printf("4: 25 FPS\n");
+		printf("5: 29.97 FPS (Right -> key held: 30 FPS)\n");
 		if (!rvidHeader.dualScreen || !rvidHeader.bmpMode) {
-			printf("5: 47.952 FPS (Right -> key held: 48 FPS)\n");
-			printf("6: 59.94 FPS (Right -> key held: 60 FPS)\n");
+			printf("6: 47.952 FPS (Right -> key held: 48 FPS)\n");
+			printf("7: 50 FPS\n");
+			printf("8: 59.8261 FPS\n");
+			printf("9: 59.94 FPS (Right -> key held: 60 FPS)\n");
 		}
 		Sleep(100);
 
@@ -423,15 +427,31 @@ int main(int argc, char **argv) {
 				break;
 			}
 			if (GetKeyState('4') & 0x8000) {
+				rvidHeader.fps = 25;
+				fpsReduceBy01 = false;
+				break;
+			}
+			if (GetKeyState('5') & 0x8000) {
 				rvidHeader.fps = 30;
 				break;
 			}
 			if (!rvidHeader.dualScreen || !rvidHeader.bmpMode) {
-				if (GetKeyState('5') & 0x8000) {
+				if (GetKeyState('6') & 0x8000) {
 					rvidHeader.fps = 48;
 					break;
 				}
-				if (GetKeyState('6') & 0x8000) {
+				if (GetKeyState('7') & 0x8000) {
+					rvidHeader.fps = 50;
+					fpsReduceBy01 = false;
+					break;
+				}
+				if (GetKeyState('8') & 0x8000) {
+					rvidHeader.fps = 60;
+					fpsReduceBy01 = false;
+					dsRefreshRate = true;
+					break;
+				}
+				if (GetKeyState('9') & 0x8000) {
 					rvidHeader.fps = 60;
 					break;
 				}
@@ -448,7 +468,7 @@ int main(int argc, char **argv) {
 		fpsLimitForProgressiveScan /= 2;
 	}
 	rvidHeader.interlaced = (rvidHeader.fps > fpsLimitForProgressiveScan) ? 1 : 0;
-	int fpsLimitForCompressionSupport = (rvidHeader.dualScreen ? 24 : 48);
+	int fpsLimitForCompressionSupport = (rvidHeader.dualScreen ? 25 : 50);
 	if (rvidHeader.bmpMode) {
 		fpsLimitForCompressionSupport /= 2;
 	}
@@ -629,14 +649,20 @@ int main(int argc, char **argv) {
 				case 24:
 					printf(fpsReduceBy01 ? "23.976" : "24");
 					break;
+				case 25:
+					printf("25");
+					break;
 				case 30:
 					printf(fpsReduceBy01 ? "29.97" : "30");
 					break;
 				case 48:
 					printf(fpsReduceBy01 ? "47.952" : "48");
 					break;
+				case 50:
+					printf("50");
+					break;
 				case 60:
-					printf(fpsReduceBy01 ? "59.94" : "60");
+					printf(dsRefreshRate ? "59.8261" : fpsReduceBy01 ? "59.94" : "60");
 					break;
 			}
 			printf(" FPS\n");
@@ -671,6 +697,7 @@ int main(int argc, char **argv) {
 		if (rvidFpsEntered) {
 			info.SetInt("RVID", "FPS", rvidHeader.fps);
 			info.SetInt("RVID", "FPS_REDUCE_BY_0.1", fpsReduceBy01);
+			info.SetInt("RVID", "FPS_DS_NATIVE", dsRefreshRate);
 		}
 		if (rvidCompressEntered) {
 			info.SetInt("RVID", "COMPRESSED", framesCompressed);
@@ -941,7 +968,9 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 
-	if (fpsReduceBy01) {
+	if (dsRefreshRate) {
+		rvidHeader.fps = 0;
+	} else if (fpsReduceBy01) {
 		rvidHeader.fps += 0x80;
 	}
 
