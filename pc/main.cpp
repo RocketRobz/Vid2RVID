@@ -77,7 +77,7 @@ u32 getFileSize(const char *fileName)
 	return fsize;
 }
 
-#define rvidVer 3
+#define rvidVer 4
 
 typedef struct rvidHeaderInfo {
 	u32 formatString;  	    // "RVID" string
@@ -91,7 +91,8 @@ typedef struct rvidHeaderInfo {
 	u8 audioBitMode;		// 0 = 8-bit, 1 = 16-bit
 	u8 bmpMode;        		// 0 = 8 BPP (RGB565), 1 = 16 BPP (RGB555), 2 = 16 BPP (RGB565)
 	u32 compressedFrameSizeTableOffset;		// Offset of compressed frame size table
-	u32 soundOffset;		// Offset of sound stream
+	u32 soundLeftOffset;		// Offset of left-side sound stream
+	u32 soundRightOffset;		// Offset of right-side sound stream
 } rvidHeaderInfo;
 
 rvidHeaderInfo rvidHeader;
@@ -548,12 +549,25 @@ int main(int argc, char **argv) {
 	bool rvidAudioBitModeEntered = false;
 
 	char soundPath[256];
+	char soundRightPath[256];
 	sprintf(soundPath, "%s/sound.raw", framesFolder);
 	if (access(soundPath, F_OK) != 0) {
 		sprintf(soundPath, "%s/sound.raw.pcm", framesFolder);
 	}
+	sprintf(soundRightPath, "%s/soundRight.raw", framesFolder);
+	if (access(soundRightPath, F_OK) != 0) {
+		sprintf(soundRightPath, "%s/soundRight.raw.pcm", framesFolder);
+	}
 	bool soundFound = false;
+	bool soundRightFound = false;
+	u32 soundLeftSize = 0;
+	u32 soundRightSize = 0;
 	if (access(soundPath, F_OK) == 0) {
+		soundLeftSize = getFileSize(soundPath);
+		if (access(soundRightPath, F_OK) == 0) {
+			soundRightSize = getFileSize(soundRightPath);
+			soundRightFound = true;
+		}
 		rvidHeader.sampleRate = info.GetInt("RVID", "AUDIO_HZ", 0);
 		rvidHeader.audioBitMode = info.GetInt("RVID", "AUDIO_BIT_MODE", 2);
 		if (rvidHeader.sampleRate == 0) {
@@ -992,7 +1006,8 @@ int main(int argc, char **argv) {
 	if (framesCompressed) {
 		rvidHeader.compressedFrameSizeTableOffset = 0x200+frameOffsetTableSize;
 	}
-	rvidHeader.soundOffset = soundFound ? 0x200+frameOffsetTableSize+compressedFrameSizeTableSize+tempFramesSize : 0;
+	rvidHeader.soundLeftOffset = soundFound ? 0x200+frameOffsetTableSize+compressedFrameSizeTableSize+tempFramesSize : 0;
+	rvidHeader.soundRightOffset = soundRightFound ? 0x200+frameOffsetTableSize+compressedFrameSizeTableSize+tempFramesSize+soundLeftSize : 0;
 
 	FILE* videoOutput = fopen("output.rvid", "wb");
 	if (!videoOutput) {
@@ -1074,7 +1089,6 @@ int main(int argc, char **argv) {
 		clear_screen();
 		printf("Adding sound...\n");
 
-		u32 fsize = getFileSize(soundPath);
 		u32 offset = 0;
 		int numr;
 
@@ -1086,11 +1100,29 @@ int main(int argc, char **argv) {
 			fwrite(fileBuffer, 1, numr, videoOutput);
 			offset += sizeof(fileBuffer);
 
-			if (offset > fsize) {
+			if (offset > soundLeftSize) {
 				break;
 			}
 		}
 		fclose(soundFile);
+
+		if (soundRightFound) {
+			offset = 0;
+
+			soundFile = fopen(soundRightPath, "rb");
+			while (1)
+			{
+				// Add right-side sound to .rvid file
+				numr = fread(fileBuffer, 1, sizeof(fileBuffer), soundFile);
+				fwrite(fileBuffer, 1, numr, videoOutput);
+				offset += sizeof(fileBuffer);
+
+				if (offset > soundRightSize) {
+					break;
+				}
+			}
+			fclose(soundFile);
+		}
 	}
 
 	fclose(videoOutput);
