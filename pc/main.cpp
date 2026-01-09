@@ -116,7 +116,7 @@ const char* framesFolder = "rvidFrames";
 	printf("Done!\n");
 }*/
 
-void convertFrame(int b, unsigned width, std::vector<unsigned char> image) {
+void convertFrame(int b, unsigned width, std::vector<unsigned char> image, bool alternatePixel) {
 	if (!rvidHeader.bmpMode) {
 		for (int i = 0; i < 256; i++) {
 			paletteSet[i] = false;
@@ -124,7 +124,6 @@ void convertFrame(int b, unsigned width, std::vector<unsigned char> image) {
 		}
 	}
 
-	bool alternatePixel = false;
 	int x = 0;
 	for(unsigned i=0;i<image.size()/4;i++) {
 		if (rvidHeader.bmpMode && alternatePixel) {
@@ -843,7 +842,7 @@ int main(int argc, char **argv) {
 
 				if ((b == 0) && ((i % 500) == 0)) printf("%i/%i\n", i, foundFrames);
 
-				convertFrame(b, width, image);
+				convertFrame(b, width, image, !rvidHeader.interlaced && (i % 2));
 
 				bool duplicateFrameFound = false;
 				if (num > 0) {
