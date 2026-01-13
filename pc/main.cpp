@@ -415,8 +415,8 @@ int main(int argc, char **argv) {
 		if (!rvidHeader.dualScreen || !rvidHeader.bmpMode) {
 			printf("6: 47.952 FPS (Right -> key held: 48 FPS)\n");
 			printf("7: 50 FPS\n");
-			printf("8: 59.8261 FPS\n");
-			printf("9: 59.94 FPS (Right -> key held: 60 FPS)\n");
+			printf("8: 59.94 FPS (Down \\|/ key held: 59.8261 FPS, Right -> key held: 60 FPS)\n");
+			printf("9: 72 FPS\n");
 		}
 		Sleep(100);
 
@@ -455,12 +455,15 @@ int main(int argc, char **argv) {
 				}
 				if (GetKeyState('8') & 0x8000) {
 					rvidHeader.fps = 60;
-					fpsReduceBy01 = false;
-					dsRefreshRate = true;
+					if (fpsReduceBy01 && (GetKeyState(VK_DOWN) & 0x8000)) {
+						fpsReduceBy01 = false;
+						dsRefreshRate = true;
+					}
 					break;
 				}
 				if (GetKeyState('9') & 0x8000) {
-					rvidHeader.fps = 60;
+					rvidHeader.fps = 72;
+					fpsReduceBy01 = false;
 					break;
 				}
 			}
@@ -471,7 +474,7 @@ int main(int argc, char **argv) {
 		Sleep(10);
 	}
 
-	int fpsLimitForProgressiveScan = (rvidHeader.dualScreen ? 30 : 60);
+	int fpsLimitForProgressiveScan = (rvidHeader.dualScreen ? 30 : 72);
 	if (rvidHeader.bmpMode) {
 		fpsLimitForProgressiveScan /= 2;
 	}
@@ -684,6 +687,9 @@ int main(int argc, char **argv) {
 					break;
 				case 60:
 					printf(dsRefreshRate ? "59.8261" : fpsReduceBy01 ? "59.94" : "60");
+					break;
+				case 72:
+					printf("72");
 					break;
 			}
 			printf(" FPS\n");
