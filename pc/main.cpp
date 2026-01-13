@@ -12,6 +12,7 @@
 
 #include "graphics/lodepng.h"
 #include "lz77.h"
+#include "sha1.h"
 #include "inifile.h"
 
 #define lowHeightForDoubleFps 108
@@ -35,28 +36,22 @@ void clear_screen(char fill = ' ') {
 }
 
 static bool bottomField[2] = {false};
-static bool previousFrame = false;
-static bool currentFrame = false;
+static int previousFrame = 0;
+static int lruCachePos = 0;
 
 bool paletteSet[256] = {false};
-u16 palette_lru[2][256] = {0};
 u16 palette[256] = {0};
 
-u8 convertedFrame_lru[2][256*192];
-u16 convertedFrame16_lru[2][256*192];
-u8 halvedFrame_lru[2][256*96];
-u16 halvedFrame16_lru[2][256*96];
 u8 convertedFrame[256*192];
 u16 convertedFrame16[256*192];
 u8 halvedFrame[256*96];
 u16 halvedFrame16[256*96];
+char convertedFrameSHA1[20];
 unsigned char* compressedFrame;
 
 char fileBuffer[0x100000] = {0};
 u32 frameOffsetTableSize = 0;
-u32 frameOffset_lru[2] = {0};
 u32 frameOffset = 0;
-int frameFileSize_lru[2] = {0};
 u32 compressedFrameSizeTableSize = 0;
 u32 tempFramesSize = 0;
 u32 soundSize = 0;
@@ -205,10 +200,23 @@ void convertFrame(int b, unsigned width, std::vector<unsigned char> image, bool 
 					x = 0;
 				}
 			}
+			SHA1(convertedFrameSHA1, (char*)halvedFrame16, (256*rvidHeader.vRes)*2);
 			bottomField[b] = !bottomField[b];
+		} else {
+			SHA1(convertedFrameSHA1, (char*)convertedFrame16, (256*rvidHeader.vRes)*2);
 		}
 	} else {
+		SHA1_CTX ctx;
+		unsigned int ii;
+		char* convertedFrameChar = (char*)palette;
+
+		SHA1Init(&ctx);
+		for (ii=0; ii<256*2; ii+=1)
+			SHA1Update(&ctx, (const unsigned char*)convertedFrameChar + ii, 1);
+
 		if (rvidHeader.interlaced) {
+			char* convertedFrameChar = (char*)halvedFrame;
+
 			int f = bottomField[b] ? 1 : 0;
 			int x = 0;
 			for(int i = 0; i < 256*rvidHeader.vRes; i++) {
@@ -219,8 +227,17 @@ void convertFrame(int b, unsigned width, std::vector<unsigned char> image, bool 
 					x = 0;
 				}
 			}
+			for (ii=0; ii<256*rvidHeader.vRes; ii+=1)
+				SHA1Update(&ctx, (const unsigned char*)convertedFrameChar + ii, 1);
+
 			bottomField[b] = !bottomField[b];
+		} else {
+			char* convertedFrameChar = (char*)convertedFrame;
+
+			for (ii=0; ii<256*rvidHeader.vRes; ii+=1)
+				SHA1Update(&ctx, (const unsigned char*)convertedFrameChar + ii, 1);
 		}
+		SHA1Final((unsigned char *)convertedFrameSHA1, &ctx);
 	}
 }
 
@@ -821,11 +838,30 @@ int main(int argc, char **argv) {
 		}
 	}
 
+	const int foundFramesTotal = foundFrames*(rvidHeader.dualScreen+1);
 	const int hRes = rvidHeader.bmpMode ? 0x200 : 0x100;
+
+	u32* frameOffset_lru = new u32[foundFramesTotal+1];
+	memset(frameOffset_lru, 0xFF, (foundFramesTotal+1)*sizeof(u32));
+	int* frameFileSize_lru = new int[foundFramesTotal+1];
+	memset(frameFileSize_lru, 0xFF, (foundFramesTotal+1)*sizeof(int));
+	char* convertedFramesSHA1[foundFramesTotal+1] = {NULL};
+	// u16* palette_lru[rvidHeader.bmpMode ? 1 : foundFramesTotal+1] = {NULL};
+	// u8* convertedFrame_lru[foundFramesTotal+1] = {NULL};
 
 	for (int i = 0; i <= foundFrames; i++) {
 		for (int b = 0; b < rvidHeader.dualScreen+1; b++) {
 			frameOffsetTableSize += 4;
+
+			const int num = rvidHeader.dualScreen ? (i*2)+b : i;
+			/* if (!rvidHeader.bmpMode) {
+				palette_lru[num] = new u16[256];
+				memset(palette_lru[num], 0, 256*2);
+			}
+			const u32 len = rvidHeader.bmpMode ? (256*rvidHeader.vRes)*2 : 256*rvidHeader.vRes;
+			convertedFrame_lru[num] = new u8[len];
+			memset(convertedFrame_lru[num], 0, len); */
+			convertedFramesSHA1[num] = new char[20];
 		}
 	}
 	u32* frameOffsetTable = new u32[frameOffsetTableSize/4];
@@ -875,18 +911,18 @@ int main(int argc, char **argv) {
 				bool duplicateFrameFound = false;
 				int duplicateFrame = 0;
 				if (num > 0) {
-					if (rvidHeader.bmpMode) {
+					/* if (rvidHeader.bmpMode) {
 						if (rvidHeader.interlaced) {
-							for (int i2 = 0; i2 < 2; i2++) {
-								duplicateFrameFound = memcmp(halvedFrame16, halvedFrame16_lru[i2], 0x200*rvidHeader.vRes) == 0;
+							for (int i2 = 0; i2 < lruCachePos; i2++) {
+								duplicateFrameFound = memcmp(halvedFrame16, convertedFrame_lru[i2], 0x200*rvidHeader.vRes) == 0;
 								if (duplicateFrameFound) {
 									duplicateFrame = i2;
 									break;
 								}
 							}
 						} else {
-							for (int i2 = 0; i2 < 2; i2++) {
-								duplicateFrameFound = memcmp(convertedFrame16, convertedFrame16_lru[i2], 0x200*rvidHeader.vRes) == 0;
+							for (int i2 = 0; i2 < lruCachePos; i2++) {
+								duplicateFrameFound = memcmp(convertedFrame16, convertedFrame_lru[i2], 0x200*rvidHeader.vRes) == 0;
 								if (duplicateFrameFound) {
 									duplicateFrame = i2;
 									break;
@@ -894,11 +930,11 @@ int main(int argc, char **argv) {
 							}
 						}
 					} else {
-						for (int i2 = 0; i2 < 2; i2++) {
+						for (int i2 = 0; i2 < lruCachePos; i2++) {
 							duplicateFrameFound = memcmp(palette, palette_lru[i2], 256*2) == 0;
 							if (duplicateFrameFound) {
 								if (rvidHeader.interlaced) {
-									duplicateFrameFound = memcmp(halvedFrame, halvedFrame_lru[i2], 0x100*rvidHeader.vRes) == 0;
+									duplicateFrameFound = memcmp(halvedFrame, convertedFrame_lru[i2], 0x100*rvidHeader.vRes) == 0;
 								} else {
 									duplicateFrameFound = memcmp(convertedFrame, convertedFrame_lru[i2], 0x100*rvidHeader.vRes) == 0;
 								}
@@ -908,24 +944,32 @@ int main(int argc, char **argv) {
 								}
 							}
 						}
+					} */
+					for (int i2 = 0; i2 < lruCachePos; i2++) {
+						if (memcmp(convertedFramesSHA1[i2], convertedFrameSHA1, 20) == 0) {
+							duplicateFrameFound = true;
+							duplicateFrame = i2;
+							break;
+						}
 					}
 				}
 
 				if (!duplicateFrameFound) {
-					if (rvidHeader.bmpMode) {
+					/* if (rvidHeader.bmpMode) {
 						if (rvidHeader.interlaced) {
-							memcpy(halvedFrame16_lru[currentFrame], halvedFrame16, 0x200*rvidHeader.vRes);
+							memcpy(convertedFrame_lru[lruCachePos], halvedFrame16, 0x200*rvidHeader.vRes);
 						} else {
-							memcpy(convertedFrame16_lru[currentFrame], convertedFrame16, 0x200*rvidHeader.vRes);
+							memcpy(convertedFrame_lru[lruCachePos], convertedFrame16, 0x200*rvidHeader.vRes);
 						}
 					} else {
-						memcpy(palette_lru[currentFrame], palette, 256*2);
+						memcpy(palette_lru[lruCachePos], palette, 256*2);
 						if (rvidHeader.interlaced) {
-							memcpy(halvedFrame_lru[currentFrame], halvedFrame, 0x100*rvidHeader.vRes);
+							memcpy(convertedFrame_lru[lruCachePos], halvedFrame, 0x100*rvidHeader.vRes);
 						} else {
-							memcpy(convertedFrame_lru[currentFrame], convertedFrame, 0x100*rvidHeader.vRes);
+							memcpy(convertedFrame_lru[lruCachePos], convertedFrame, 0x100*rvidHeader.vRes);
 						}
-					}
+					} */
+					memcpy(convertedFramesSHA1[lruCachePos], convertedFrameSHA1, 20);
 
 					// Save current frame to temp file
 					if (!rvidHeader.bmpMode) {
@@ -979,10 +1023,10 @@ int main(int argc, char **argv) {
 				}
 				if (!duplicateFrameFound) {
 					frameOffset = frameOffsetTable[num];
-					frameOffset_lru[currentFrame] = frameOffset;
-					frameFileSize_lru[currentFrame] = frameFileSize;
-					previousFrame = currentFrame;
-					currentFrame = !currentFrame;
+					frameOffset_lru[lruCachePos] = frameOffset;
+					frameFileSize_lru[lruCachePos] = frameFileSize;
+					previousFrame = lruCachePos;
+					lruCachePos++;
 					if (!rvidHeader.bmpMode) {
 						tempFramesSize += 0x200;
 					}
@@ -1001,6 +1045,10 @@ int main(int argc, char **argv) {
 		}
 	}
 	fclose(tempFrames);
+
+	// delete[] convertedFramesSHA1;
+	delete[] frameOffset_lru;
+	delete[] frameFileSize_lru;
 
 	for (int i = 0; i <= foundFrames; i++) {
 		for (int b = 0; b < rvidHeader.dualScreen+1; b++) {

@@ -39,6 +39,10 @@
 		<Unit filename="lz77.cpp" />
 		<Unit filename="lz77.h" />
 		<Unit filename="main.cpp" />
+		<Unit filename="sha1.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="sha1.h" />
 		<Extensions />
 	</Project>
 </CodeBlocks_project_file>
