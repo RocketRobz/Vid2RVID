@@ -355,7 +355,7 @@ int main(int argc, char **argv) {
 	rvidHeader.bmpMode = info.GetInt("RVID", "BMP_MODE", 3);
 	rvidHeader.fps = info.GetInt("RVID", "FPS", 0);
 	bool fpsReduceBy01 = info.GetInt("RVID", "FPS_REDUCE_BY_0.1", 1);
-	bool dsRefreshRate = false;
+	bool dsRefreshRate = info.GetInt("RVID", "FPS_DS_NATIVE", 0);
 	bool widthDoubled = false;
 
 	{
