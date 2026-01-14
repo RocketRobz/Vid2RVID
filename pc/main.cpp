@@ -1208,7 +1208,7 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	for (int i = 0; i <= splitPointReached; i++) {
+	for (int i = 0; i < splitPointReached+1; i++) {
 		fclose(videoOutput[i]);
 	}
 	if (audioOutput) {
