@@ -1016,7 +1016,7 @@ int main(int argc, char **argv) {
 					u32 sizeIncrease = rvidHeader.bmpMode ? 0 : 0x200;
 					sizeIncrease += frameFileSize_lru[previousFrame];
 					if (splitPointReached < 3) {
-						const u64 sizeCheck = frameOffsetTable[num]+sizeIncrease;
+						const u64 sizeCheck = (frameOffsetTable[num]-splitPointReached)+sizeIncrease;
 						if (sizeCheck >= 0xFFFFFFFF*(splitPointReached+1)) {
 							splitPointReached++;
 							frameOffsetTable[num] = splitPointReached;
