@@ -96,7 +96,7 @@ typedef struct rvidHeaderInfo {
 rvidHeaderInfo rvidHeader;
 const char* framesFolder = "rvidFrames";
 
-#define titleText "Vid2RVID v1.5.1\nby Rocket Robz\n"
+#define titleText "Vid2RVID v1.6\nby Rocket Robz\n"
 
 /*void extractFrames(void) {
 	clear_screen();
@@ -1011,18 +1011,23 @@ int main(int argc, char **argv) {
 				if (num == 0) {
 					frameOffsetTable[num] = 0x200+frameOffsetTableSize+compressedFrameSizeTableSize;
 					sizeCheck = frameOffsetTable[num];
+					if (!rvidHeader.bmpMode) {
+						sizeCheck += 0x200;
+					}
+					sizeCheck += frameFileSize;
 				} else {
 					frameOffsetTable[num] = duplicateFrameFound ? frameOffset_lru[duplicateFrame] : frameOffset;
 
 					if (!duplicateFrameFound) {
-						u32 sizeIncrease = rvidHeader.bmpMode ? 0 : 0x200;
-						sizeIncrease += frameFileSize_lru[previousFrame];
+						const u32 sizeIncrease = (rvidHeader.bmpMode ? 0 : 0x200) + frameFileSize_lru[previousFrame];
+
 						if (splitPointReached < 3) {
-							sizeCheck += sizeIncrease;
+							const u32 sizeIncreaseForCheck = (rvidHeader.bmpMode ? 0 : 0x200) + frameFileSize;
+							sizeCheck += sizeIncreaseForCheck;
 							if (sizeCheck >= 0xFFFFFFFF) {
 								splitPointReached++;
 								frameOffsetTable[num] = splitPointReached;
-								sizeCheck = 0;
+								sizeCheck = sizeIncreaseForCheck;
 							} else {
 								frameOffsetTable[num] += sizeIncrease;
 							}
