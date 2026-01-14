@@ -57,6 +57,7 @@ u32 frameOffset = 0;
 u32 compressedFrameSizeTableSize = 0;
 u64 tempFramesSize = 0;
 u32 soundSize = 0;
+u64 sizeCheck = 0;
 
 u8 headerToFile[0x200] = {0};
 
@@ -1009,22 +1010,25 @@ int main(int argc, char **argv) {
 
 				if (num == 0) {
 					frameOffsetTable[num] = 0x200+frameOffsetTableSize+compressedFrameSizeTableSize;
+					sizeCheck = frameOffsetTable[num];
 				} else {
 					frameOffsetTable[num] = duplicateFrameFound ? frameOffset_lru[duplicateFrame] : frameOffset;
-				}
-				if ((num > 0) && !duplicateFrameFound) {
-					u32 sizeIncrease = rvidHeader.bmpMode ? 0 : 0x200;
-					sizeIncrease += frameFileSize_lru[previousFrame];
-					if (splitPointReached < 3) {
-						const u64 sizeCheck = (frameOffsetTable[num]-splitPointReached)+sizeIncrease;
-						if (sizeCheck >= 0xFFFFFFFF*(splitPointReached+1)) {
-							splitPointReached++;
-							frameOffsetTable[num] = splitPointReached;
+
+					if (!duplicateFrameFound) {
+						u32 sizeIncrease = rvidHeader.bmpMode ? 0 : 0x200;
+						sizeIncrease += frameFileSize_lru[previousFrame];
+						if (splitPointReached < 3) {
+							sizeCheck += sizeIncrease;
+							if (sizeCheck >= 0xFFFFFFFF) {
+								splitPointReached++;
+								frameOffsetTable[num] = splitPointReached;
+								sizeCheck = 0;
+							} else {
+								frameOffsetTable[num] += sizeIncrease;
+							}
 						} else {
 							frameOffsetTable[num] += sizeIncrease;
 						}
-					} else {
-						frameOffsetTable[num] += sizeIncrease;
 					}
 				}
 				if (framesCompressed) {
