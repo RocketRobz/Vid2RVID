@@ -1093,11 +1093,15 @@ int main(int argc, char **argv) {
 		} else {
 			char outputPath[24];
 			for (int i = 0; i < splitPointReached+1; i++) {
-				sprintf(outputPath, "output.part%i.rvid", i+1);
+				if (i == 0) {
+					sprintf(outputPath, "output.rvid");
+				} else {
+					sprintf(outputPath, "output.rvid.%i", i);
+				}
 				videoOutput[i] = fopen(outputPath, "wb");
 			}
 		}
-		audioOutput = fopen("output.audio.rvid", "wb");
+		audioOutput = fopen("output.rvidsnd", "wb");
 	} else {
 		videoOutput[0] = fopen("output.rvid", "wb");
 	}
