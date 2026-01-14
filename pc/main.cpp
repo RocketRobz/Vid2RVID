@@ -546,7 +546,7 @@ int main(int argc, char **argv) {
 		clear_screen();
 		printf("Compress the video frames to save some space?\n");
 		printf("Video quality will not be affected.\n");
-		printf("Depending on how may frames you have, this may take a while.\n");
+		printf("Depending on how may frames there are, this may take a while.\n");
 		printf("\n");
 		printf("Y: Yes\n");
 		printf("N: No\n");
