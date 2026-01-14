@@ -17,6 +17,7 @@
 
 #define lowHeightForDoubleFps 108
 
+typedef uint64_t u64;
 typedef uint32_t u32;
 typedef uint16_t u16;
 typedef uint8_t u8;
@@ -36,6 +37,7 @@ void clear_screen(char fill = ' ') {
 }
 
 static bool bottomField[2] = {false};
+static int splitPointReached = 0;
 static int previousFrame = 0;
 static int lruCachePos = 0;
 
@@ -53,7 +55,7 @@ char fileBuffer[0x100000] = {0};
 u32 frameOffsetTableSize = 0;
 u32 frameOffset = 0;
 u32 compressedFrameSizeTableSize = 0;
-u32 tempFramesSize = 0;
+u64 tempFramesSize = 0;
 u32 soundSize = 0;
 
 u8 headerToFile[0x200] = {0};
@@ -1005,14 +1007,25 @@ int main(int argc, char **argv) {
 					}
 				}
 
-				if (num > 1) {
+				if (num == 0) {
+					frameOffsetTable[num] = 0x200+frameOffsetTableSize+compressedFrameSizeTableSize;
+				} else {
 					frameOffsetTable[num] = duplicateFrameFound ? frameOffset_lru[duplicateFrame] : frameOffset;
 				}
 				if ((num > 0) && !duplicateFrameFound) {
-					if (!rvidHeader.bmpMode) {
-						frameOffsetTable[num] += 0x200;
+					u32 sizeIncrease = rvidHeader.bmpMode ? 0 : 0x200;
+					sizeIncrease += frameFileSize_lru[previousFrame];
+					if (splitPointReached < 3) {
+						const u64 sizeCheck = frameOffsetTable[num]+sizeIncrease;
+						if (sizeCheck >= 0xFFFFFFFF*(splitPointReached+1)) {
+							splitPointReached++;
+							frameOffsetTable[num] = splitPointReached;
+						} else {
+							frameOffsetTable[num] += sizeIncrease;
+						}
+					} else {
+						frameOffsetTable[num] += sizeIncrease;
 					}
-					frameOffsetTable[num] += frameFileSize_lru[previousFrame];
 				}
 				if (framesCompressed) {
 					if (rvidHeader.bmpMode) {
@@ -1047,26 +1060,41 @@ int main(int argc, char **argv) {
 	fclose(tempFrames);
 
 	// delete[] convertedFramesSHA1;
-	delete[] frameOffset_lru;
-	delete[] frameFileSize_lru;
-
-	for (int i = 0; i <= foundFrames; i++) {
-		for (int b = 0; b < rvidHeader.dualScreen+1; b++) {
-			const int num = rvidHeader.dualScreen ? (i*2)+b : i;
-			frameOffsetTable[num] += 0x200+frameOffsetTableSize+compressedFrameSizeTableSize;
-		}
-	}
+	const u64 totalSizeNoFrames = 0x200+frameOffsetTableSize+compressedFrameSizeTableSize;
+	const u64 totalSizeNoAudio = totalSizeNoFrames+tempFramesSize;
+	const u64 totalSize = totalSizeNoAudio+soundLeftSize+soundRightSize;
+	const bool splitRvid = (totalSize >= 0xFFFFFFFF);
 
 	if (framesCompressed) {
 		rvidHeader.compressedFrameSizeTableOffset = 0x200+frameOffsetTableSize;
 	}
-	rvidHeader.soundLeftOffset = soundFound ? 0x200+frameOffsetTableSize+compressedFrameSizeTableSize+tempFramesSize : 0;
-	rvidHeader.soundRightOffset = soundRightFound ? 0x200+frameOffsetTableSize+compressedFrameSizeTableSize+tempFramesSize+soundLeftSize : 0;
+	if (splitRvid) {
+		rvidHeader.soundLeftOffset = 0;
+		rvidHeader.soundRightOffset = soundRightFound ? soundLeftSize : 0;
+	} else {
+		rvidHeader.soundLeftOffset = soundFound ? totalSizeNoAudio : 0;
+		rvidHeader.soundRightOffset = soundRightFound ? totalSizeNoAudio+soundLeftSize : 0;
+	}
 
-	FILE* videoOutput = fopen("output.rvid", "wb");
-	if (!videoOutput) {
+	FILE* videoOutput[4] = {NULL};
+	FILE* audioOutput = NULL;
+	if (splitRvid) {
+		if (totalSizeNoAudio < 0xFFFFFFFF) {
+			videoOutput[0] = fopen("output.rvid", "wb");
+		} else {
+			char outputPath[24];
+			for (int i = 0; i < splitPointReached+1; i++) {
+				sprintf(outputPath, "output.part%i.rvid", splitPointReached+1);
+				videoOutput[i] = fopen(outputPath, "wb");
+			}
+		}
+		audioOutput = fopen("output.audio.rvid", "wb");
+	} else {
+		videoOutput[0] = fopen("output.rvid", "wb");
+	}
+	if (!videoOutput[0]) {
 		clear_screen();
-		printf("Failed to create output.rvid\n");
+		printf("Failed to create rvid file\n");
 		printf("\n");
 		printf("Press ESC to exit\n");
 
@@ -1088,9 +1116,9 @@ int main(int argc, char **argv) {
 
 	// Write header
 	memcpy(headerToFile, &rvidHeader, sizeof(rvidHeaderInfo));
-	fwrite(headerToFile, 1, 0x200, videoOutput);
+	fwrite(headerToFile, 1, 0x200, videoOutput[0]);
 
-	fwrite(frameOffsetTable, 1, frameOffsetTableSize, videoOutput);
+	fwrite(frameOffsetTable, 1, frameOffsetTableSize, videoOutput[0]);
 	delete[] frameOffsetTable;
 
 	clear_screen();
@@ -1098,23 +1126,18 @@ int main(int argc, char **argv) {
 
 	if (framesCompressed) {
 		if (rvidHeader.bmpMode) {
-			fwrite(compressedFrameSizeTable32, 1, compressedFrameSizeTableSize, videoOutput);
-			delete[] compressedFrameSizeTable32;
+			fwrite(compressedFrameSizeTable32, 1, compressedFrameSizeTableSize, videoOutput[0]);
 		} else {
-			fwrite(compressedFrameSizeTable16, 1, compressedFrameSizeTableSize, videoOutput);
-			delete[] compressedFrameSizeTable16;
+			fwrite(compressedFrameSizeTable16, 1, compressedFrameSizeTableSize, videoOutput[0]);
 		}
 	}
 
-	u32 fsize = tempFramesSize;
-	u32 offset = 0;
 	int numr = 0;
 
 	tempFrames = fopen("tempFrames.bin", "rb");
-	while (1)
-	{
+	for (int i = 0; i < lruCachePos; i++) {
 		// Add frames to .rvid file
-		numr = fread(fileBuffer, 1, sizeof(fileBuffer), tempFrames);
+		numr = fread(fileBuffer, 1, (rvidHeader.bmpMode ? 0 : 0x200) + frameFileSize_lru[i], tempFrames);
 		/* if (numr == 0) {
 			clear_screen();
 			printf("tempFrames.bin is not the expected size.\n");
@@ -1130,14 +1153,20 @@ int main(int argc, char **argv) {
 
 			return 0;
 		} */
-		fwrite(fileBuffer, 1, numr, videoOutput);
-		offset += sizeof(fileBuffer);
-
-		if (offset >= fsize) {
-			break;
-		}
+		fwrite(fileBuffer, 1, numr, videoOutput[frameOffset_lru[i] % 4]);
 	}
 	fclose(tempFrames);
+
+	delete[] frameOffset_lru;
+	delete[] frameFileSize_lru;
+
+	if (framesCompressed) {
+		if (rvidHeader.bmpMode) {
+			delete[] compressedFrameSizeTable32;
+		} else {
+			delete[] compressedFrameSizeTable16;
+		}
+	}
 
 	if (soundFound) {
 		clear_screen();
@@ -1151,7 +1180,7 @@ int main(int argc, char **argv) {
 		{
 			// Add sound to .rvid file
 			numr = fread(fileBuffer, 1, sizeof(fileBuffer), soundFile);
-			fwrite(fileBuffer, 1, numr, videoOutput);
+			fwrite(fileBuffer, 1, numr, audioOutput ? audioOutput : videoOutput[0]);
 			offset += sizeof(fileBuffer);
 
 			if (offset > soundLeftSize) {
@@ -1168,7 +1197,7 @@ int main(int argc, char **argv) {
 			{
 				// Add right-side sound to .rvid file
 				numr = fread(fileBuffer, 1, sizeof(fileBuffer), soundFile);
-				fwrite(fileBuffer, 1, numr, videoOutput);
+				fwrite(fileBuffer, 1, numr, audioOutput ? audioOutput : videoOutput[0]);
 				offset += sizeof(fileBuffer);
 
 				if (offset > soundRightSize) {
@@ -1179,7 +1208,12 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	fclose(videoOutput);
+	for (int i = 0; i <= splitPointReached; i++) {
+		fclose(videoOutput[i]);
+	}
+	if (audioOutput) {
+		fclose(audioOutput);
+	}
 
 	remove("tempFrames.bin");
 
