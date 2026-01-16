@@ -761,12 +761,70 @@ int main(int argc, char **argv) {
 	// if (!rvidHeader.bmpMode)
 	{
 		char flagPath[256];
+		sprintf(flagPath, "%s/dithered", framesFolder);
+		bool flagFound = (access(flagPath, F_OK) == 0);
+		if (!rvidHeader.bmpMode && !flagFound && !widthDoubled) {
+			clear_screen();
+			printf("Applying RGB565 dithering...\n");
+			for (int i = 0; i <= foundFrames; i++) {
+				sprintf(framePath, "%s/frame%i.png", framesFolder, i);
+				if (access(framePath, F_OK) != 0) break;
+				for (int b = 0; b < rvidHeader.dualScreen+1; b++) {
+					std::vector<unsigned char> image;
+					unsigned width, height;
+					lodepng::decode(image, width, height, framePath);
+
+					if ((b == 0) && ((i % 500) == 0)) printf("%i/%i\n", i, foundFrames);
+
+					bool alternatePixel = !rvidHeader.interlaced && (i % 2);
+					int x = 0;
+					for(unsigned i=0;i<image.size();i+=4) {
+						if (alternatePixel) {
+							if (image[i] >= 0x4 && image[i] < 0xFC) {
+								image[i] += 0x4;
+							}
+							if (image[i+1] >= 0x2 && image[i+1] < 0xFE) {
+								image[i+1] += 0x2;
+							}
+							if (image[i+2] >= 0x4 && image[i+2] < 0xFC) {
+								image[i+2] += 0x4;
+							}
+						}
+
+						const u8 r = image[i] >> 3;
+						const u8 g = image[i+1] >> 2;
+						const u8 b = image[i+2] >> 3;
+
+						image[i] = (r * 255) / 31;
+						image[i+1] = (g * 255) / 63;
+						image[i+2] = (b * 255) / 31;
+
+						x++;
+						if ((unsigned)x == width) {
+							alternatePixel = !alternatePixel;
+							x=0;
+						}
+						alternatePixel = !alternatePixel;
+					}
+					lodepng::encode(framePath, image, width, height);
+
+					if ((b == 0) && rvidHeader.dualScreen) {
+						sprintf(framePath, "%s/bottom/frame%i.png", framesFolder, i);
+					}
+				}
+			}
+			FILE* flagCreate = fopen(flagPath, "wb");
+			fclose(flagCreate);
+		}
 		sprintf(flagPath, "%s/256colors", framesFolder);
-		const bool flagFound = (access(flagPath, F_OK) == 0);
+		flagFound = (access(flagPath, F_OK) == 0);
 		if ((!rvidHeader.bmpMode && !flagFound) || widthDoubled) {
 			if (access("Process Frames.bat", F_OK) != 0) {
 				const u16 newLine = 0x0A0D;
 				const char* line1 = "@echo Processing frames, this may take a while...";
+				if (!widthDoubled) {
+					line1 = "@echo Reducing color amount in each frame, this may take a while...";
+				}
 				const char* line2 = "@cd \"";
 				const char* line2End = "\"";
 				const char* line3 = "";
@@ -774,7 +832,7 @@ int main(int argc, char **argv) {
 					if (widthDoubled) {
 						line3 = "@magick mogrify -resize 256 -ordered-dither checks,32,64,32 -colors 256 *.png";
 					} else {
-						line3 = "@magick mogrify -ordered-dither checks,32,64,32 -colors 256 *.png";
+						line3 = "@magick mogrify -colors 256 *.png";
 					}
 				} else if (widthDoubled) {
 					line3 = "@magick mogrify -resize 256 *.png";
