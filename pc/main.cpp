@@ -758,8 +758,76 @@ int main(int argc, char **argv) {
 		info.SaveIniFileModified(infoIniPath);
 	}
 
-	// if (!rvidHeader.bmpMode)
-	{
+	if (widthDoubled) {
+		char flagPath[256];
+		sprintf(flagPath, "%s/widthDoubled", framesFolder);
+		if (access(flagPath, F_OK) != 0) {
+			const u16 newLine = 0x0A0D;
+			const char* line1 = "@echo Resizing frames, this may take a while...";
+			const char* line2 = "@cd \"";
+			const char* line2End = "\"";
+			const char* line3 = "@magick mogrify -resize 256 *.png";
+			const char* line3_2 = "@cd bottom";
+			const char* line3_3 = "@cd..";
+			const char* line4 = "@mkdir widthDoubled";
+			const char* line5 = "@echo Done!";
+			const char* line6 = "@pause";
+
+			FILE* batFile = fopen("Process Frames.bat", "wb");
+			fwrite(line1, 1, strlen(line1), batFile);
+			fwrite(&newLine, 2, 1, batFile);
+			if (framesFolder[1] == ':') {
+				char cdPathToDrive[7];
+				sprintf(cdPathToDrive, "@cd C:");
+				cdPathToDrive[4] = framesFolder[0];
+
+				fwrite(cdPathToDrive, 1, 6, batFile);
+				fwrite(&newLine, 2, 1, batFile);
+			}
+			fwrite(line2, 1, strlen(line2), batFile);
+			fwrite(framesFolder, 1, strlen(framesFolder), batFile);
+			fwrite(line2End, 1, strlen(line2End), batFile);
+			fwrite(&newLine, 2, 1, batFile);
+			fwrite(line3, 1, strlen(line3), batFile);
+			fwrite(&newLine, 2, 1, batFile);
+			if (rvidHeader.dualScreen) {
+				fwrite(line3_2, 1, strlen(line3_2), batFile);
+				fwrite(&newLine, 2, 1, batFile);
+				fwrite(line3, 1, strlen(line3), batFile);
+				fwrite(&newLine, 2, 1, batFile);
+				fwrite(line3_3, 1, strlen(line3_3), batFile);
+				fwrite(&newLine, 2, 1, batFile);
+			}
+			fwrite(line4, 1, strlen(line4), batFile);
+			fwrite(&newLine, 2, 1, batFile);
+			fwrite(line5, 1, strlen(line5), batFile);
+			fwrite(&newLine, 2, 1, batFile);
+			fwrite(line6, 1, strlen(line6), batFile);
+			fclose(batFile);
+		}
+
+		while (access(flagPath, F_OK) != 0) {
+			clear_screen();
+			printf("Ensure ImageMagick is installed (with application directory added to system path),\n");
+			printf("then open \"Process Frames.bat\".\n\n");
+			printf("When the processing is done, press ENTER.\n");
+			Sleep(100);
+
+			while (1) {
+				if (GetKeyState(VK_RETURN) & 0x8000) {
+					break;
+				}
+				Sleep(10);
+			}
+		}
+
+		remove(flagPath);
+
+		if (access("Process Frames.bat", F_OK) == 0) {
+			remove("Process Frames.bat");
+		}
+	}
+	if (!rvidHeader.bmpMode) {
 		char flagPath[256];
 		sprintf(flagPath, "%s/dithered", framesFolder);
 		bool flagFound = (access(flagPath, F_OK) == 0);
@@ -817,26 +885,13 @@ int main(int argc, char **argv) {
 			fclose(flagCreate);
 		}
 		sprintf(flagPath, "%s/256colors", framesFolder);
-		flagFound = (access(flagPath, F_OK) == 0);
-		if ((!rvidHeader.bmpMode && !flagFound) || widthDoubled) {
+		if (!rvidHeader.bmpMode && access(flagPath, F_OK) != 0) {
 			if (access("Process Frames.bat", F_OK) != 0) {
 				const u16 newLine = 0x0A0D;
-				const char* line1 = "@echo Processing frames, this may take a while...";
-				if (!widthDoubled) {
-					line1 = "@echo Reducing color amount in each frame, this may take a while...";
-				}
+				const char* line1 = "@echo Reducing color amount in each frame, this may take a while...";
 				const char* line2 = "@cd \"";
 				const char* line2End = "\"";
-				const char* line3 = "";
-				if (!rvidHeader.bmpMode && !flagFound) {
-					if (widthDoubled) {
-						line3 = "@magick mogrify -resize 256 -ordered-dither checks,32,64,32 -colors 256 *.png";
-					} else {
-						line3 = "@magick mogrify -colors 256 *.png";
-					}
-				} else if (widthDoubled) {
-					line3 = "@magick mogrify -resize 256 *.png";
-				}
+				const char* line3 = "@magick mogrify -colors 256 *.png";
 				const char* line3_2 = "@cd bottom";
 				const char* line3_3 = "@cd..";
 				const char* line4 = "@mkdir 256colors";
@@ -868,10 +923,8 @@ int main(int argc, char **argv) {
 					fwrite(line3_3, 1, strlen(line3_3), batFile);
 					fwrite(&newLine, 2, 1, batFile);
 				}
-				if (!rvidHeader.bmpMode && !flagFound) {
-					fwrite(line4, 1, strlen(line4), batFile);
-					fwrite(&newLine, 2, 1, batFile);
-				}
+				fwrite(line4, 1, strlen(line4), batFile);
+				fwrite(&newLine, 2, 1, batFile);
 				fwrite(line5, 1, strlen(line5), batFile);
 				fwrite(&newLine, 2, 1, batFile);
 				fwrite(line6, 1, strlen(line6), batFile);
