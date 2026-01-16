@@ -830,8 +830,7 @@ int main(int argc, char **argv) {
 	if (!rvidHeader.bmpMode) {
 		char flagPath[256];
 		sprintf(flagPath, "%s/dithered", framesFolder);
-		bool flagFound = (access(flagPath, F_OK) == 0);
-		if (!rvidHeader.bmpMode && !flagFound && !widthDoubled) {
+		if (access(flagPath, F_OK) != 0 && !widthDoubled) {
 			clear_screen();
 			printf("Applying RGB565 dithering...\n");
 			for (int i = 0; i <= foundFrames; i++) {
@@ -885,7 +884,7 @@ int main(int argc, char **argv) {
 			fclose(flagCreate);
 		}
 		sprintf(flagPath, "%s/256colors", framesFolder);
-		if (!rvidHeader.bmpMode && access(flagPath, F_OK) != 0) {
+		if (access(flagPath, F_OK) != 0) {
 			if (access("Process Frames.bat", F_OK) != 0) {
 				const u16 newLine = 0x0A0D;
 				const char* line1 = "@echo Reducing color amount in each frame, this may take a while...";
