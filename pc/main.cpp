@@ -830,7 +830,7 @@ int main(int argc, char **argv) {
 	if (!rvidHeader.bmpMode) {
 		char flagPath[256];
 		sprintf(flagPath, "%s/dithered", framesFolder);
-		if (access(flagPath, F_OK) != 0 && !widthDoubled) {
+		if (access(flagPath, F_OK) != 0) {
 			clear_screen();
 			printf("Applying RGB565 dithering...\n");
 			for (int i = 0; i <= foundFrames; i++) {
