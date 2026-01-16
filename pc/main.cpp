@@ -382,12 +382,18 @@ int main(int argc, char **argv) {
 		printf("Select the amount of colors to display on-screen.\n");
 		printf("(Dithering will be applied to look like more is on-screen.)\n\n");
 		printf("1: 256 (8 BPP, RGB565)\n");
+		if (rvidHeader.dualScreen) {
+			printf("- Frames will be interlaced if above 30 FPS\n");
+		}
 		printf("- Good quality\n");
-		printf("- Recommended due to low file size and high frame rate support\n");
+		printf("- Recommended due to low file size\n");
 		printf("- Supports screen color filters\n");
 		printf("2: Unlimited (16 BPP, RGB555)\n");
 		if (rvidHeader.dualScreen) {
 			printf("- Frame Rate Limit: 30 FPS\n");
+			printf("- Frames will be interlaced if above 15 FPS\n");
+		} else {
+			printf("- Frames will be interlaced if above 30 FPS\n");
 		}
 		printf("- High quality\n");
 		printf("- Large file size\n");
@@ -395,8 +401,11 @@ int main(int argc, char **argv) {
 		printf("3: Unlimited (16 BPP, RGB565)\n");
 		if (rvidHeader.dualScreen) {
 			printf("- Frame Rate Limit: 30 FPS\n");
+			printf("- Frames will be interlaced if above 15 FPS\n");
+		} else {
+			printf("- Frames will be interlaced if above 30 FPS\n");
 		}
-		printf("- High quality\n");
+		printf("- Max quality\n");
 		printf("- Increased green color range\n");
 		printf("- Large file size\n");
 		printf("- Does not support screen color filters\n");
