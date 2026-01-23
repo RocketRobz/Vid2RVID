@@ -501,12 +501,18 @@ int main(int argc, char **argv) {
 		Sleep(10);
 	}
 
-	int fpsLimitForProgressiveScan = (rvidHeader.dualScreen ? 30 : 72);
+	int fpsLimitForProgressiveScan = 72;
+	if (rvidHeader.dualScreen) {
+		fpsLimitForProgressiveScan /= 2;
+	}
 	if (rvidHeader.bmpMode) {
 		fpsLimitForProgressiveScan /= 2;
 	}
 	rvidHeader.interlaced = (rvidHeader.fps > fpsLimitForProgressiveScan) ? 1 : 0;
-	int fpsLimitForCompressionSupport = (rvidHeader.dualScreen ? 25 : 50);
+	int fpsLimitForCompressionSupport = 50;
+	if (rvidHeader.dualScreen) {
+		fpsLimitForCompressionSupport /= 2;
+	}
 	if (rvidHeader.bmpMode) {
 		fpsLimitForCompressionSupport /= 2;
 	}
