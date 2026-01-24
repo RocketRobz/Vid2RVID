@@ -8,7 +8,7 @@
 #include <unistd.h>                       //probably don't need most of these :p
 #include <stdint.h>
 #include <string.h>
-#if _WIN32
+#ifdef _WIN32
 #include <Windows.h>
 #endif
 
@@ -28,7 +28,7 @@ template<class TYPE> inline TYPE BIT(const TYPE & x)
 { return TYPE(1) << x; }
 
 void clear_screen() {
-	#if _WIN32
+	#ifdef _WIN32
 	char fill = ' ';
 	COORD tl = {0,0};
 	CONSOLE_SCREEN_BUFFER_INFO s;
@@ -43,9 +43,11 @@ void clear_screen() {
 	#endif
 }
 
+#ifndef _WIN32
 void wait_any_key() {
 	while ( getchar() != '\n' );
 }
+#endif
 
 static bool bottomField[2] = {false};
 static int splitPointReached = 0;
@@ -107,7 +109,7 @@ typedef struct rvidHeaderInfo {
 rvidHeaderInfo rvidHeader;
 const char* framesFolder = "rvidFrames";
 
-#if _WIN32
+#ifdef _WIN32
 #define titleText "Vid2RVID v1.6\nby Rocket Robz\n"
 #else
 #define titleText "Vid2RVID v1.6\nby Rocket Robz\nLinux support by Paulo Mateus\n"
@@ -277,13 +279,35 @@ int main(int argc, char **argv) {
 	}
 	printf("\n\n");
 	if (!folderFound) {
+		#ifdef _WIN32
+		printf("Press ESC to exit\n");
+
+		while (1) {
+			if (GetKeyState(VK_ESCAPE) & 0x8000) {
+				break;
+			}
+			Sleep(10);
+		}
+		#else
 		printf("Press any key to exit\n");
 		wait_any_key();
+		#endif
 
 		return 0;
 	}
+	#ifdef _WIN32
+	printf("Press ENTER to convert\n");
+
+	while (1) {
+		if (GetKeyState(VK_RETURN) & 0x8000) {
+			break;
+		}
+		Sleep(10);
+	}
+	#else
 	printf("Press any key to convert\n");
 	wait_any_key();
+	#endif
 	//printf("E: Extract raw frames from source.rvid\n");
 
 	char infoIniPath[256];
@@ -311,8 +335,19 @@ int main(int argc, char **argv) {
 		printf(framesFolder);
 		printf("\"\n");
 		printf("\n");
+		#ifdef WIN32
+		printf("Press ESC to exit\n");
+
+		while (1) {
+			if (GetKeyState(VK_ESCAPE) & 0x8000) {
+				break;
+			}
+			Sleep(10);
+		}
+		#else
 		printf("Press any key to exit\n");
 		wait_any_key();
+		#endif
 		return 0;
 	}
 
@@ -329,8 +364,19 @@ int main(int argc, char **argv) {
 			printf("The amount of top screen and bottom screen frames do not match.\n");
 			printf("Make sure they're the same amount.\n");
 			printf("\n");
+			#ifdef WIN32
+			printf("Press ESC to exit\n");
+
+			while (1) {
+				if (GetKeyState(VK_ESCAPE) & 0x8000) {
+					break;
+				}
+				Sleep(10);
+			}
+			#else
 			printf("Press any key to exit\n");
 			wait_any_key();
+			#endif
 			return 0;
 		}
 		rvidHeader.dualScreen = 1;
@@ -831,8 +877,14 @@ int main(int argc, char **argv) {
 			clear_screen();
 			printf("Ensure ImageMagick is installed (with application directory added to system path),\n");
 			printf("then open \"Process Frames.bat\".\n\n");
-			printf("When the processing is done, press any key to continue...\n");
-			wait_any_key();
+			printf("When the processing is done, press ENTER to continue...\n");
+
+			while (1) {
+				if (GetKeyState(VK_RETURN) & 0x8000) {
+					break;
+				}
+				Sleep(10);
+			}
 		}
 
 		remove(flagPath);
@@ -1006,8 +1058,14 @@ int main(int argc, char **argv) {
 				clear_screen();
 				printf("Ensure ImageMagick is installed (with application directory added to system path),\n");
 				printf("then open \"Process Frames.bat\".\n\n");
-				printf("When the processing is done, press any key to continue...\n");
-				wait_any_key();
+				printf("When the processing is done, press ENTER to continue...\n");
+
+				while (1) {
+					if (GetKeyState(VK_RETURN) & 0x8000) {
+						break;
+					}
+					Sleep(10);
+				}
 			}
 		}
 
@@ -1339,8 +1397,19 @@ int main(int argc, char **argv) {
 	if (!videoOutput[0]) {
 		printf("Failed to create rvid file\n");
 		printf("\n");
+		#ifdef _WIN32
+		printf("Press ESC to exit\n");
+
+		while (1) {
+			if (GetKeyState(VK_ESCAPE) & 0x8000) {
+				break;
+			}
+			Sleep(10);
+		}
+		#else
 		printf("Press any key to exit\n");
 		wait_any_key();
+		#endif
 		return 0;
 	}
 
@@ -1376,8 +1445,19 @@ int main(int argc, char **argv) {
 		/* if (numr == 0) {
 			printf("tempFrames.bin is not the expected size.\n");
 			printf("\n");
+			#ifdef _WIN32
+			printf("Press ESC to exit\n");
+
+			while (1) {
+				if (GetKeyState(VK_ESCAPE) & 0x8000) {
+					break;
+				}
+				Sleep(10);
+			}
+			#else
 			printf("Press any key to exit\n");
 			wait_any_key();
+			#endif
 			return 0;
 		} */
 		fwrite(fileBuffer, 1, numr, videoOutput[frameOffset_lru[i] % 4]);
