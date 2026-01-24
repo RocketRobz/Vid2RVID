@@ -910,7 +910,7 @@ int main(int argc, char **argv) {
 					unsigned width, height;
 					lodepng::decode(image, width, height, framePath);
 
-					if ((b == 0) && ((i % 250) == 0)) printf("\r%i/%i", i, foundFrames);
+					if ((b == 0) && ((i % 250) == 0 || i == foundFrames)) printf("\r%i/%i", i, foundFrames);
 					fflush(stdout);
 
 					bool alternatePixel = !rvidHeader.interlaced && (i % 2);
@@ -1136,7 +1136,7 @@ int main(int argc, char **argv) {
 				unsigned width, height;
 				lodepng::decode(image, width, height, framePath);
 
-				if ((b == 0) && ((i % 250) == 0)) printf("\r%i/%i", i, foundFrames);
+				if ((b == 0) && ((i % 250) == 0 || i == foundFrames)) printf("\r%i/%i", i, foundFrames);
 				fflush(stdout);
 
 				convertFrame(b, width, image, !rvidHeader.interlaced && (i % 2));
