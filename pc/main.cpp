@@ -8,7 +8,9 @@
 #include <unistd.h>                       //probably don't need most of these :p
 #include <stdint.h>
 #include <string.h>
+#if _WIN32
 #include <Windows.h>
+#endif
 
 #include "graphics/lodepng.h"
 #include "lz77.h"
@@ -25,7 +27,9 @@ typedef uint8_t u8;
 template<class TYPE> inline TYPE BIT(const TYPE & x)
 { return TYPE(1) << x; }
 
-void clear_screen(char fill = ' ') {
+void clear_screen() {
+	#if _WIN32
+	char fill = ' ';
 	COORD tl = {0,0};
 	CONSOLE_SCREEN_BUFFER_INFO s;
 	HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -34,6 +38,13 @@ void clear_screen(char fill = ' ') {
 	FillConsoleOutputCharacter(console, fill, cells, tl, &written);
 	FillConsoleOutputAttribute(console, s.wAttributes, cells, tl, &written);
 	SetConsoleCursorPosition(console, tl);
+	#else
+	printf("\x1b[2J\x1b[1;1H");
+	#endif
+}
+
+void wait_any_key() {
+	while ( getchar() != '\n' );
 }
 
 static bool bottomField[2] = {false};
@@ -96,7 +107,11 @@ typedef struct rvidHeaderInfo {
 rvidHeaderInfo rvidHeader;
 const char* framesFolder = "rvidFrames";
 
+#if _WIN32
 #define titleText "Vid2RVID v1.6\nby Rocket Robz\n"
+#else
+#define titleText "Vid2RVID v1.6\nby Rocket Robz\nLinux support by Paulo Mateus\n"
+#endif
 
 /*void extractFrames(void) {
 	clear_screen();
@@ -246,6 +261,8 @@ void convertFrame(int b, unsigned width, std::vector<unsigned char> image, bool 
 
 int main(int argc, char **argv) {
 
+	int selector = 0;
+
 	printf(titleText);
 	printf("\n");
 	printf("Path of video frames:\n\"");
@@ -260,31 +277,14 @@ int main(int argc, char **argv) {
 	}
 	printf("\n\n");
 	if (!folderFound) {
-		printf("Press ESC to exit\n");
-
-		while (1) {
-			if (GetKeyState(VK_ESCAPE) & 0x8000) {
-				break;
-			}
-			Sleep(10);
-		}
+		printf("Press any key to exit\n");
+		wait_any_key();
 
 		return 0;
 	}
-	printf("Press ENTER to convert\n");
+	printf("Press any key to convert\n");
+	wait_any_key();
 	//printf("E: Extract raw frames from source.rvid\n");
-
-	while (1) {
-		if (GetKeyState(VK_RETURN) & 0x8000) {
-			break;
-		}
-		/*if (GetKeyState('E') & 0x8000) {
-			extractFrames();
-			return 0;
-			break;
-		}*/
-		Sleep(10);
-	}
 
 	char infoIniPath[256];
 	sprintf(infoIniPath, "%s/info.ini", framesFolder);
@@ -311,15 +311,8 @@ int main(int argc, char **argv) {
 		printf(framesFolder);
 		printf("\"\n");
 		printf("\n");
-		printf("Press ESC to exit\n");
-
-		while (1) {
-			if (GetKeyState(VK_ESCAPE) & 0x8000) {
-				break;
-			}
-			Sleep(10);
-		}
-
+		printf("Press any key to exit\n");
+		wait_any_key();
 		return 0;
 	}
 
@@ -336,15 +329,8 @@ int main(int argc, char **argv) {
 			printf("The amount of top screen and bottom screen frames do not match.\n");
 			printf("Make sure they're the same amount.\n");
 			printf("\n");
-			printf("Press ESC to exit\n");
-
-			while (1) {
-				if (GetKeyState(VK_ESCAPE) & 0x8000) {
-					break;
-				}
-				Sleep(10);
-			}
-
+			printf("Press any key to exit\n");
+			wait_any_key();
 			return 0;
 		}
 		rvidHeader.dualScreen = 1;
@@ -407,26 +393,17 @@ int main(int argc, char **argv) {
 		printf("- Max quality\n");
 		printf("- Larger file size\n");
 		printf("- Does not support screen color filters\n");
-		Sleep(100);
 
-		while (1) {
-			if (GetKeyState('1') & 0x8000) {
-				rvidHeader.bmpMode = 0;
-				break;
-			}
-			if (GetKeyState('2') & 0x8000) {
-				rvidHeader.bmpMode = 1;
-				break;
-			}
-			if (GetKeyState('3') & 0x8000) {
-				rvidHeader.bmpMode = 2;
-				break;
-			}
-			Sleep(10);
+		selector = 0;
+
+		while (selector < 1 || selector > 3) {
+			scanf("%d", &selector);
 		}
+
+		rvidHeader.bmpMode = selector - 1;
+		selector = 0;
 		reviewInformation = true;
 		bmpModeEntered = true;
-		Sleep(10);
 	}
 
 	bool rvidFpsEntered = false;
@@ -434,71 +411,116 @@ int main(int argc, char **argv) {
 	if (rvidHeader.fps == 0) {
 		clear_screen();
 		printf("What is the video's frame rate?\n");
-		printf("1: 11.988 FPS (Right -> key held: 12 FPS)\n");
-		printf("2: 14.98 FPS (Right -> key held: 15 FPS)\n");
-		printf("3: 23.976 FPS (Right -> key held: 24 FPS)\n");
-		printf("4: 25 FPS\n");
-		printf("5: 29.97 FPS (Right -> key held: 30 FPS)\n");
+		printf("1: 11.988 FPS\n");
+		printf("2: 12     FPS\n");
+		printf("3: 14.98  FPS\n");
+		printf("4: 15     FPS\n");
+		printf("5: 23.976 FPS\n");
+		printf("6: 24     FPS\n");
+		printf("7: 25     FPS\n");
+		printf("8: 29.97  FPS\n");
+		printf("9: 30     FPS\n");
 		if (!rvidHeader.dualScreen || !rvidHeader.bmpMode) {
-			printf("6: 47.952 FPS (Right -> key held: 48 FPS)\n");
-			printf("7: 50 FPS\n");
-			printf("8: 59.94 FPS (Down \\|/ key held: 59.8261 FPS, Right -> key held: 60 FPS)\n");
-			printf("9: 72 FPS\n");
+			printf("10: 47.952 FPS\n");
+			printf("11: 48     FPS\n");
+			printf("12: 50     FPS\n");
+			printf("13: 59.826 FPS\n");
+			printf("14: 59.94  FPS\n");
+			printf("15: 60     FPS\n");
+			printf("16: 72     FPS\n");
 		}
-		Sleep(100);
+
+		selector = 0;
 
 		while (1) {
-			fpsReduceBy01 = !(GetKeyState(VK_RIGHT) & 0x8000);
-			if (GetKeyState('1') & 0x8000) {
+			scanf("%d", &selector);
+
+			if (selector == 1) {
 				rvidHeader.fps = 12;
+				fpsReduceBy01 = true; // 11.988
 				break;
 			}
-			if (GetKeyState('2') & 0x8000) {
+			if (selector == 2) {
+				rvidHeader.fps = 12;
+				fpsReduceBy01 = false;
+				break;
+			}
+			if (selector == 3) {
 				rvidHeader.fps = 15;
+				fpsReduceBy01 = true; // 14.98
 				break;
 			}
-			if (GetKeyState('3') & 0x8000) {
+			if (selector == 4) {
+				rvidHeader.fps = 15;
+				fpsReduceBy01 = false;
+				break;
+			}
+			if (selector == 5) {
 				rvidHeader.fps = 24;
+				fpsReduceBy01 = true; // 23.976
 				break;
 			}
-			if (GetKeyState('4') & 0x8000) {
+			if (selector == 6) {
+				rvidHeader.fps = 24;
+				fpsReduceBy01 = false;
+				break;
+			}
+			if (selector == 7) {
 				rvidHeader.fps = 25;
 				fpsReduceBy01 = false;
 				break;
 			}
-			if (GetKeyState('5') & 0x8000) {
+			if (selector == 8) {
 				rvidHeader.fps = 30;
+				fpsReduceBy01 = true; // 29.97
+				break;
+			}
+			if (selector == 9) {
+				rvidHeader.fps = 30;
+				fpsReduceBy01 = false;
 				break;
 			}
 			if (!rvidHeader.dualScreen || !rvidHeader.bmpMode) {
-				if (GetKeyState('6') & 0x8000) {
+				if (selector == 10) {
 					rvidHeader.fps = 48;
+					fpsReduceBy01 = true; // 47.952
 					break;
 				}
-				if (GetKeyState('7') & 0x8000) {
+				if (selector == 11) {
+					rvidHeader.fps = 48;
+					fpsReduceBy01 = false;
+					break;
+				}
+				if (selector == 12) {
 					rvidHeader.fps = 50;
 					fpsReduceBy01 = false;
 					break;
 				}
-				if (GetKeyState('8') & 0x8000) {
+				if (selector == 13) {
 					rvidHeader.fps = 60;
-					if (fpsReduceBy01 && (GetKeyState(VK_DOWN) & 0x8000)) {
-						fpsReduceBy01 = false;
-						dsRefreshRate = true;
-					}
+					fpsReduceBy01 = false;
+					dsRefreshRate = true;
 					break;
 				}
-				if (GetKeyState('9') & 0x8000) {
+				if (selector == 14) {
+					rvidHeader.fps = 60;
+					fpsReduceBy01 = true; // 59.94
+					break;
+				}
+				if (selector == 15) {
+					rvidHeader.fps = 60;
+					fpsReduceBy01 = false;
+					break;
+				}
+				if (selector == 16) {
 					rvidHeader.fps = 72;
 					fpsReduceBy01 = false;
 					break;
 				}
 			}
-			Sleep(10);
 		}
 		reviewInformation = true;
 		rvidFpsEntered = true;
-		Sleep(10);
 	}
 
 	int fpsLimitForProgressiveScan = 72;
@@ -538,19 +560,14 @@ int main(int argc, char **argv) {
 		printf("Interlace the video?\n");
 		printf("This will reduce HFR video size in half.\n");
 		printf("\n");
-		printf("Y: Yes\n");
-		printf("N: No\n");
+		printf("1: Yes\n");
+		printf("0: No\n");
 
-		while (1) {
-			if (GetKeyState('Y') & 0x8000) {
-				rvidHeader.interlaced = 1;
-				break;
-			}
-			if (GetKeyState('N') & 0x8000) {
-				rvidHeader.interlaced = 0;
-				break;
-			}
-		}
+		selector = 0;
+
+		scanf("%d", &selector);
+		rvidHeader.interlaced = !(selector == 0);
+
 	} */
 
 	bool rvidCompressEntered = false;
@@ -561,24 +578,16 @@ int main(int argc, char **argv) {
 		printf("Video quality will not be affected.\n");
 		printf("Depending on how may frames there are, this may take a while.\n");
 		printf("\n");
-		printf("Y: Yes\n");
-		printf("N: No\n");
-		Sleep(100);
+		printf("1: Yes\n");
+		printf("0: No\n");
 
-		while (1) {
-			if (GetKeyState('Y') & 0x8000) {
-				framesCompressed = 1;
-				break;
-			}
-			if (GetKeyState('N') & 0x8000) {
-				framesCompressed = 0;
-				break;
-			}
-			Sleep(10);
-		}
+		selector = 1;
+		scanf("%d", &selector);
+		framesCompressed = !(selector == 0);
+
+
 		reviewInformation = true;
 		rvidCompressEntered = true;
-		Sleep(10);
 	}
 
 	bool rvidSoundEntered = false;
@@ -615,60 +624,62 @@ int main(int argc, char **argv) {
 			printf("3: 16000hz\n");
 			printf("4: 22050hz\n");
 			printf("5: 32000hz\n");
-			Sleep(100);
+
+			selector = 5;
 
 			while (1) {
-				/* if (GetKeyState('0') & 0x8000) {
+				scanf("%d", &selector);
+
+				/* if (selector == 0) {
 					rvidHeader.hasSound = 0;
 					break;
 				} */
-				if (GetKeyState('1') & 0x8000) {
+				if (selector == 1) {
 					rvidHeader.sampleRate = 8000;
 					break;
 				}
-				if (GetKeyState('2') & 0x8000) {
+				if (selector == 2) {
 					rvidHeader.sampleRate = 11025;
 					break;
 				}
-				if (GetKeyState('3') & 0x8000) {
+				if (selector == 3) {
 					rvidHeader.sampleRate = 16000;
 					break;
 				}
-				if (GetKeyState('4') & 0x8000) {
+				if (selector == 4) {
 					rvidHeader.sampleRate = 22050;
 					break;
 				}
-				if (GetKeyState('5') & 0x8000) {
+				if (selector == 5) {
 					rvidHeader.sampleRate = 32000;
 					break;
 				}
-				Sleep(10);
 			}
 			reviewInformation = true;
 			rvidSoundEntered = true;
-			Sleep(10);
+
 		}
 		if (rvidHeader.audioBitMode == 2) {
 			clear_screen();
 			printf("What is the encoding of the audio?\n");
 			printf("1: 8-bit\n");
 			printf("2: 16-bit\n");
-			Sleep(100);
+
 
 			while (1) {
-				if (GetKeyState('1') & 0x8000) {
+				scanf("%d", &selector);
+
+				if (selector == 1) {
 					rvidHeader.audioBitMode = 0;
 					break;
 				}
-				if (GetKeyState('2') & 0x8000) {
+				if (selector == 2) {
 					rvidHeader.audioBitMode = 1;
 					break;
 				}
-				Sleep(10);
 			}
 			reviewInformation = true;
 			rvidAudioBitModeEntered = true;
-			Sleep(10);
 		}
 		soundFound = true;
 	} else {
@@ -736,20 +747,16 @@ int main(int argc, char **argv) {
 			printf("- Audio Quality: %ihz, %i-bit", rvidHeader.sampleRate, (rvidHeader.audioBitMode == 1) ? 16 : 8);
 		}
 		printf("\n");
-		printf("Y: Yes, save & proceed\n");
-		printf("N: No, exit\n");
-		Sleep(100);
+		printf("1: Yes, save & proceed\n");
+		printf("0: No, exit\n");
 
-		while (1) {
-			if (GetKeyState('Y') & 0x8000) {
-				break;
-			}
-			if (GetKeyState('N') & 0x8000) {
-				return 0;
-			}
-			Sleep(10);
+
+		selector = 1;
+		scanf("%d", &selector);
+		if (selector == 0) {
+			return 0;
 		}
-		Sleep(10);
+
 
 		if (bmpModeEntered) {
 			info.SetInt("RVID", "BMP_MODE", rvidHeader.bmpMode);
@@ -774,6 +781,7 @@ int main(int argc, char **argv) {
 	if (widthDoubled) {
 		char flagPath[256];
 		sprintf(flagPath, "%s/widthDoubled", framesFolder);
+		#ifdef _WIN32
 		if (access(flagPath, F_OK) != 0) {
 			const u16 newLine = 0x0A0D;
 			const char* line1 = "@echo Resizing frames, this may take a while...";
@@ -823,15 +831,8 @@ int main(int argc, char **argv) {
 			clear_screen();
 			printf("Ensure ImageMagick is installed (with application directory added to system path),\n");
 			printf("then open \"Process Frames.bat\".\n\n");
-			printf("When the processing is done, press ENTER.\n");
-			Sleep(100);
-
-			while (1) {
-				if (GetKeyState(VK_RETURN) & 0x8000) {
-					break;
-				}
-				Sleep(10);
-			}
+			printf("When the processing is done, press any key to continue...\n");
+			wait_any_key();
 		}
 
 		remove(flagPath);
@@ -839,6 +840,61 @@ int main(int argc, char **argv) {
 		if (access("Process Frames.bat", F_OK) == 0) {
 			remove("Process Frames.bat");
 		}
+		#else
+		if (access(flagPath, F_OK) != 0) {
+			const char* newLine = "\n";
+			const char* line1 = "echo Resizing frames, this may take a while...";
+			const char* line2 = "cd \"";
+			const char* line2End = "\"";
+			const char* line3 = "magick mogrify -resize 256 *.png";
+			const char* line3_2 = "cd bottom";
+			const char* line3_3 = "cd..";
+			const char* line4 = "mkdir widthDoubled";
+			const char* line5 = "echo Done!";
+			const char* line6 = "read -n1 -p \"Press enter to continue...\"";
+
+			FILE* batFile = fopen("Process Frames.sh", "wb");
+			fwrite(line1, 1, strlen(line1), batFile);
+			fwrite(newLine, 1, 1, batFile);
+			fwrite(line2, 1, strlen(line2), batFile);
+
+
+			fwrite(framesFolder, 1, strlen(framesFolder), batFile);
+
+			fwrite(line2End, 1, strlen(line2End), batFile);
+			fwrite(newLine, 1, 1, batFile);
+			fwrite(line3, 1, strlen(line3), batFile);
+			fwrite(newLine, 1, 1, batFile);
+			if (rvidHeader.dualScreen) {
+				fwrite(line3_2, 1, strlen(line3_2), batFile);
+				fwrite(newLine, 1, 1, batFile);
+				fwrite(line3, 1, strlen(line3), batFile);
+				fwrite(newLine, 1, 1, batFile);
+				fwrite(line3_3, 1, strlen(line3_3), batFile);
+				fwrite(newLine, 1, 1, batFile);
+			}
+			fwrite(line4, 1, strlen(line4), batFile);
+			fwrite(newLine, 1, 1, batFile);
+			fwrite(line5, 1, strlen(line5), batFile);
+			fwrite(newLine, 1, 1, batFile);
+			fwrite(line6, 1, strlen(line6), batFile);
+			fclose(batFile);
+		}
+
+		while (access(flagPath, F_OK) != 0) {
+			clear_screen();
+			printf("Ensure ImageMagick is installed (and 'magick' command is working),\n");
+			printf("then open \"Process Frames.sh\".\n\n");
+			printf("When the processing is done, press any key to continue...\n");
+			wait_any_key();
+		}
+
+		remove(flagPath);
+
+		if (access("Process Frames.sh", F_OK) == 0) {
+			remove("Process Frames.sh");
+		}
+		#endif
 	}
 	if (!rvidHeader.bmpMode) {
 		char flagPath[256];
@@ -854,7 +910,8 @@ int main(int argc, char **argv) {
 					unsigned width, height;
 					lodepng::decode(image, width, height, framePath);
 
-					if ((b == 0) && ((i % 500) == 0)) printf("%i/%i\n", i, foundFrames);
+					if ((b == 0) && ((i % 250) == 0)) printf("\r%i/%i", i, foundFrames);
+					fflush(stdout);
 
 					bool alternatePixel = !rvidHeader.interlaced && (i % 2);
 					int x = 0;
@@ -893,10 +950,12 @@ int main(int argc, char **argv) {
 					}
 				}
 			}
+			printf("\n");
 			FILE* flagCreate = fopen(flagPath, "wb");
 			fclose(flagCreate);
 		}
 		sprintf(flagPath, "%s/256colors", framesFolder);
+		#ifdef _WIN32
 		if (access(flagPath, F_OK) != 0) {
 			if (access("Process Frames.bat", F_OK) != 0) {
 				const u16 newLine = 0x0A0D;
@@ -947,21 +1006,68 @@ int main(int argc, char **argv) {
 				clear_screen();
 				printf("Ensure ImageMagick is installed (with application directory added to system path),\n");
 				printf("then open \"Process Frames.bat\".\n\n");
-				printf("When the processing is done, press ENTER.\n");
-				Sleep(100);
-
-				while (1) {
-					if (GetKeyState(VK_RETURN) & 0x8000) {
-						break;
-					}
-					Sleep(10);
-				}
+				printf("When the processing is done, press any key to continue...\n");
+				wait_any_key();
 			}
 		}
 
 		if (access("Process Frames.bat", F_OK) == 0) {
 			remove("Process Frames.bat");
 		}
+		#else
+		if (access(flagPath, F_OK) != 0) {
+			if (access("Process Frames.sh", F_OK) != 0) {
+				const char* newLine = "\n";
+				const char* line1 = "echo Reducing color amount in each frame, this may take a while...";
+				const char* line2 = "cd \"";
+				const char* line2End = "\"";
+				const char* line3 = "magick mogrify -colors 256 *.png";
+				const char* line3_2 = "cd bottom";
+				const char* line3_3 = "cd..";
+				const char* line4 = "mkdir 256colors";
+				const char* line5 = "echo Done!";
+				const char* line6 = "read -n1 -p \"Press enter to continue...\"";
+
+				FILE* batFile = fopen("Process Frames.sh", "wb");
+				fwrite(line1, 1, strlen(line1), batFile);
+				fwrite(newLine, 1, 1, batFile);
+				fwrite(line2, 1, strlen(line2), batFile);
+
+				fwrite(framesFolder, 1, strlen(framesFolder), batFile);
+
+				fwrite(line2End, 1, strlen(line2End), batFile);
+				fwrite(newLine, 1, 1, batFile);
+				fwrite(line3, 1, strlen(line3), batFile);
+				fwrite(newLine, 1, 1, batFile);
+				if (rvidHeader.dualScreen) {
+					fwrite(line3_2, 1, strlen(line3_2), batFile);
+					fwrite(newLine, 1, 1, batFile);
+					fwrite(line3, 1, strlen(line3), batFile);
+					fwrite(newLine, 1, 1, batFile);
+					fwrite(line3_3, 1, strlen(line3_3), batFile);
+					fwrite(newLine, 1, 1, batFile);
+				}
+				fwrite(line4, 1, strlen(line4), batFile);
+				fwrite(newLine, 1, 1, batFile);
+				fwrite(line5, 1, strlen(line5), batFile);
+				fwrite(newLine, 1, 1, batFile);
+				fwrite(line6, 1, strlen(line6), batFile);
+				fclose(batFile);
+			}
+
+			while (access(flagPath, F_OK) != 0) {
+				clear_screen();
+				printf("Ensure ImageMagick is installed (and 'magick' command is working),\n");
+				printf("then open \"Process Frames.sh\".\n\n");
+				printf("When the processing is done, press any key to continue...\n");
+				wait_any_key();
+			}
+		}
+
+		if (access("Process Frames.sh", F_OK) == 0) {
+			remove("Process Frames.sh");
+		}
+		#endif
 	}
 
 	const int foundFramesTotal = foundFrames*(rvidHeader.dualScreen+1);
@@ -1030,7 +1136,8 @@ int main(int argc, char **argv) {
 				unsigned width, height;
 				lodepng::decode(image, width, height, framePath);
 
-				if ((b == 0) && ((i % 500) == 0)) printf("%i/%i\n", i, foundFrames);
+				if ((b == 0) && ((i % 250) == 0)) printf("\r%i/%i", i, foundFrames);
+				fflush(stdout);
 
 				convertFrame(b, width, image, !rvidHeader.interlaced && (i % 2));
 
@@ -1190,6 +1297,7 @@ int main(int argc, char **argv) {
 		}
 	}
 	fclose(tempFrames);
+	printf("\n");
 
 	// delete[] convertedFramesSHA1;
 	const u64 totalSizeNoFrames = 0x200+frameOffsetTableSize+compressedFrameSizeTableSize;
@@ -1229,18 +1337,10 @@ int main(int argc, char **argv) {
 		videoOutput[0] = fopen("output.rvid", "wb");
 	}
 	if (!videoOutput[0]) {
-		clear_screen();
 		printf("Failed to create rvid file\n");
 		printf("\n");
-		printf("Press ESC to exit\n");
-
-		while (1) {
-			if (GetKeyState(VK_ESCAPE) & 0x8000) {
-				break;
-			}
-			Sleep(10);
-		}
-
+		printf("Press any key to exit\n");
+		wait_any_key();
 		return 0;
 	}
 
@@ -1257,7 +1357,6 @@ int main(int argc, char **argv) {
 	fwrite(frameOffsetTable, 1, frameOffsetTableSize, videoOutput[0]);
 	delete[] frameOffsetTable;
 
-	clear_screen();
 	printf("Adding frames...\n");
 
 	if (framesCompressed) {
@@ -1275,18 +1374,10 @@ int main(int argc, char **argv) {
 		// Add frames to .rvid file
 		numr = fread(fileBuffer, 1, (rvidHeader.bmpMode ? 0 : 0x200) + frameFileSize_lru[i], tempFrames);
 		/* if (numr == 0) {
-			clear_screen();
 			printf("tempFrames.bin is not the expected size.\n");
 			printf("\n");
-			printf("Press ESC to exit\n");
-
-			while (1) {
-				if (GetKeyState(VK_ESCAPE) & 0x8000) {
-					break;
-				}
-				Sleep(10);
-			}
-
+			printf("Press any key to exit\n");
+			wait_any_key();
 			return 0;
 		} */
 		fwrite(fileBuffer, 1, numr, videoOutput[frameOffset_lru[i] % 4]);
@@ -1305,7 +1396,6 @@ int main(int argc, char **argv) {
 	}
 
 	if (soundFound) {
-		clear_screen();
 		printf("Adding sound...\n");
 
 		u32 offset = 0;
@@ -1353,7 +1443,6 @@ int main(int argc, char **argv) {
 
 	remove("tempFrames.bin");
 
-	clear_screen();
 	printf("Done!\n");
 
 	return 0;
