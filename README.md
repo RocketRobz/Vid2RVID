@@ -40,3 +40,4 @@ bash compile.sh
 - [Drenn](https://github.com/Drenn1): GameYob's `.bmp` renderer for (deprecated) DS version.
 - [Gericom](https://github.com/Gericom): LZ77 compressor code from EFE/EveryFileExplorer.
 - [Inky1003](https://github.com/Inky1003): [Linux port](https://github.com/Inky1003/Vid2RVID) of v1.6
+- [Ivandeve](https://github.com/Ivandeve): [lodepng](https://github.com/lvandeve/lodepng)
