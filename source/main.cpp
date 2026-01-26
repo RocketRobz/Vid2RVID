@@ -8,6 +8,7 @@
 #include <unistd.h>                       //probably don't need most of these :p
 #include <stdint.h>
 #include <string.h>
+#include <thread>
 #ifdef _WIN32
 #include <Windows.h>
 #endif
@@ -53,6 +54,7 @@ static bool bottomField[2] = {false};
 static int splitPointReached = 0;
 static int previousFrame = 0;
 static int lruCachePos = 0;
+static int convertedFrames = 0;
 
 bool paletteSet[256] = {false};
 u16 palette[256] = {0};
@@ -259,6 +261,63 @@ void convertFrame(int b, unsigned width, std::vector<unsigned char> image, bool 
 		}
 		SHA1Final((unsigned char *)convertedFrameSHA1, &ctx);
 	}
+}
+
+int jobsDone = 0;
+
+void applyRgb565Dither(const int firstFrame, const int lastFrame) {
+	char framePath[256];
+	for (int i = firstFrame; i < lastFrame; i++) {
+		sprintf(framePath, "%s/frame%i.png", framesFolder, i);
+		if (access(framePath, F_OK) != 0) break;
+		for (int b = 0; b < rvidHeader.dualScreen+1; b++) {
+			std::vector<unsigned char> image;
+			unsigned width, height;
+			lodepng::decode(image, width, height, framePath);
+
+			// if ((b == 0) && ((i % 250) == 0 || i == foundFrames)) printf("\r%i/%i", i, foundFrames);
+			// fflush(stdout);
+			if (b == 0) convertedFrames++;
+
+			bool alternatePixel = !rvidHeader.interlaced && (i % 2);
+			int x = 0;
+			for(unsigned i=0;i<image.size();i+=4) {
+				if (alternatePixel) {
+					if (image[i] >= 0x4 && image[i] < 0xFC) {
+						image[i] += 0x4;
+					}
+					if (image[i+1] >= 0x2 && image[i+1] < 0xFE) {
+						image[i+1] += 0x2;
+					}
+					if (image[i+2] >= 0x4 && image[i+2] < 0xFC) {
+						image[i+2] += 0x4;
+					}
+				}
+
+				const u8 r = image[i] >> 3;
+				const u8 g = image[i+1] >> 2;
+				const u8 b = image[i+2] >> 3;
+
+				image[i] = (r * 255) / 31;
+				image[i+1] = (g * 255) / 63;
+				image[i+2] = (b * 255) / 31;
+
+				x++;
+				if ((unsigned)x == width) {
+					alternatePixel = !alternatePixel;
+					x=0;
+				}
+				alternatePixel = !alternatePixel;
+			}
+			lodepng::encode(framePath, image, width, height);
+
+			if ((b == 0) && rvidHeader.dualScreen) {
+				sprintf(framePath, "%s/bottom/frame%i.png", framesFolder, i);
+			}
+		}
+	}
+
+	jobsDone++;
 }
 
 int main(int argc, char **argv) {
@@ -953,54 +1012,40 @@ int main(int argc, char **argv) {
 		sprintf(flagPath, "%s/dithered", framesFolder);
 		if (access(flagPath, F_OK) != 0) {
 			clear_screen();
+			convertedFrames = -1;
+			jobsDone = 0;
 			printf("Applying RGB565 dithering...\n");
-			for (int i = 0; i <= foundFrames; i++) {
-				sprintf(framePath, "%s/frame%i.png", framesFolder, i);
-				if (access(framePath, F_OK) != 0) break;
-				for (int b = 0; b < rvidHeader.dualScreen+1; b++) {
-					std::vector<unsigned char> image;
-					unsigned width, height;
-					lodepng::decode(image, width, height, framePath);
+			if (foundFrames >= 128) {
+				const int foundFramesDivided = foundFrames/8;
 
-					if ((b == 0) && ((i % 250) == 0 || i == foundFrames)) printf("\r%i/%i", i, foundFrames);
+				// Speed up process by running in 8 threads
+				std::thread t1(applyRgb565Dither, 0, foundFramesDivided);
+				std::thread t2(applyRgb565Dither, foundFramesDivided, foundFramesDivided*2);
+				std::thread t3(applyRgb565Dither, foundFramesDivided*2, foundFramesDivided*3);
+				std::thread t4(applyRgb565Dither, foundFramesDivided*3, foundFramesDivided*4);
+				std::thread t5(applyRgb565Dither, foundFramesDivided*4, foundFramesDivided*5);
+				std::thread t6(applyRgb565Dither, foundFramesDivided*5, foundFramesDivided*6);
+				std::thread t7(applyRgb565Dither, foundFramesDivided*6, foundFramesDivided*7);
+				std::thread t8(applyRgb565Dither, foundFramesDivided*7, foundFrames+1);
+
+				while (jobsDone < 8) {
+					if ((convertedFrames % 250) == 0) printf("\r%i/%i", convertedFrames, foundFrames);
 					fflush(stdout);
-
-					bool alternatePixel = !rvidHeader.interlaced && (i % 2);
-					int x = 0;
-					for(unsigned i=0;i<image.size();i+=4) {
-						if (alternatePixel) {
-							if (image[i] >= 0x4 && image[i] < 0xFC) {
-								image[i] += 0x4;
-							}
-							if (image[i+1] >= 0x2 && image[i+1] < 0xFE) {
-								image[i+1] += 0x2;
-							}
-							if (image[i+2] >= 0x4 && image[i+2] < 0xFC) {
-								image[i+2] += 0x4;
-							}
-						}
-
-						const u8 r = image[i] >> 3;
-						const u8 g = image[i+1] >> 2;
-						const u8 b = image[i+2] >> 3;
-
-						image[i] = (r * 255) / 31;
-						image[i+1] = (g * 255) / 63;
-						image[i+2] = (b * 255) / 31;
-
-						x++;
-						if ((unsigned)x == width) {
-							alternatePixel = !alternatePixel;
-							x=0;
-						}
-						alternatePixel = !alternatePixel;
-					}
-					lodepng::encode(framePath, image, width, height);
-
-					if ((b == 0) && rvidHeader.dualScreen) {
-						sprintf(framePath, "%s/bottom/frame%i.png", framesFolder, i);
-					}
 				}
+				// Ensure all threads are done running
+				t1.join();
+				t2.join();
+				t3.join();
+				t4.join();
+				t5.join();
+				t6.join();
+				t7.join();
+				t8.join();
+
+				printf("\r%i/%i", convertedFrames, foundFrames);
+				fflush(stdout);
+			} else {
+				applyRgb565Dither(0, foundFrames+1);
 			}
 			printf("\n");
 			FILE* flagCreate = fopen(flagPath, "wb");
