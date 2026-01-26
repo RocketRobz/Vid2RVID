@@ -1467,18 +1467,45 @@ int main(int argc, char **argv) {
 				if (!duplicateFrameFound) {
 					const u32 sizeIncrease = frameFileSize_lru[previousFrame];
 
-					if (splitPointReached < 3) {
-						const u32 sizeIncreaseForCheck = frameFileSize;
-						sizeCheck += sizeIncreaseForCheck;
-						if (sizeCheck >= 0xFFFFFFFF) {
-							splitPointReached++;
-							frameOffsetTable[num] = splitPointReached;
-							sizeCheck = sizeIncreaseForCheck;
-						} else {
-							frameOffsetTable[num] += sizeIncrease;
-						}
+					const u32 sizeIncreaseForCheck = frameFileSize;
+					sizeCheck += sizeIncreaseForCheck;
+					if (sizeCheck >= 0xFFFFFFFF) {
+						splitPointReached++;
+						frameOffsetTable[num] = splitPointReached;
+						sizeCheck = sizeIncreaseForCheck;
 					} else {
 						frameOffsetTable[num] += sizeIncrease;
+					}
+
+					if (splitPointReached == 4) {
+						fclose(tempFrames);
+						printf(" Failed! Video is too big.\n");
+
+						remove("tempFrames.0");
+						remove("tempFrames.1");
+						remove("tempFrames.2");
+						remove("tempFrames.3");
+						remove("tempFrames.4");
+						remove("tempFrames.5");
+						remove("tempFrames.6");
+						remove("tempFrames.7");
+
+						delete[] frameOffsetTable;
+						delete[] frameOffsetTableWithDupes;
+
+						remove("tempFrames.bin");
+						delete[] frameOffset_lru;
+						delete[] frameFileSize_lru;
+
+						if (framesCompressed) {
+							if (rvidHeader.bmpMode) {
+								delete[] compressedFrameSizeTable32;
+							} else {
+								delete[] compressedFrameSizeTable16;
+							}
+						}
+
+						Sleep(2000);
 					}
 				}
 			}
@@ -1617,6 +1644,7 @@ int main(int argc, char **argv) {
 	fclose(tempFrames);
 	printf(" Done!\n");
 
+	remove("tempFrames.bin");
 	delete[] frameOffset_lru;
 	delete[] frameFileSize_lru;
 
@@ -1675,8 +1703,6 @@ int main(int argc, char **argv) {
 	if (audioOutput) {
 		fclose(audioOutput);
 	}
-
-	remove("tempFrames.bin");
 
 	Sleep(1000);
 
