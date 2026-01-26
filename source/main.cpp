@@ -1505,7 +1505,19 @@ int main(int argc, char **argv) {
 							}
 						}
 
-						Sleep(2000);
+						#ifdef _WIN32
+						printf("\nPress ESC to exit\n");
+
+						while (1) {
+							if (GetKeyState(VK_ESCAPE) & 0x8000) {
+								break;
+							}
+							Sleep(10);
+						}
+						#else
+						printf("\nPress any key to exit\n");
+						wait_any_key();
+						#endif
 
 						return 0;
 					}
