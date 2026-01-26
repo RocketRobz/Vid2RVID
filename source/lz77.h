@@ -14,7 +14,7 @@
 
 extern int frameFileSize;
 
-unsigned char *lzssCompress(unsigned char *Data, int dataSize);
+unsigned char *lzssCompress(int* frameFileSize, unsigned char *Data, int dataSize);
 
 #endif // LZSS_H_
 

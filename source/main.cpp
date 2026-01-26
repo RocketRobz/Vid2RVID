@@ -50,21 +50,21 @@ void wait_any_key() {
 }
 #endif
 
-static bool bottomField[2] = {false};
+static bool bottomField[8][2] = {{false}};
 static int splitPointReached = 0;
 static int previousFrame = 0;
 static int lruCachePos = 0;
 static int convertedFrames = 0;
 
-bool paletteSet[256] = {false};
-u16 palette[256] = {0};
+bool paletteSet[8][256] = {{false}};
+u16 palette[8][256] = {{0}};
 
-u8 convertedFrame[256*192];
-u16 convertedFrame16[256*192];
-u8 halvedFrame[256*96];
-u16 halvedFrame16[256*96];
+u8 convertedFrame[8][256*192];
+u16 convertedFrame16[8][256*192];
+u8 halvedFrame[8][256*96];
+u16 halvedFrame16[8][256*96];
 char convertedFrameSHA1[20];
-unsigned char* compressedFrame;
+unsigned char* compressedFrame[8] = {NULL};
 
 char fileBuffer[0x100000] = {0};
 u32 frameOffsetTableSize = 0;
@@ -73,6 +73,11 @@ u32 compressedFrameSizeTableSize = 0;
 u64 tempFramesSize = 0;
 u32 soundSize = 0;
 u64 sizeCheck = 0;
+
+int hRes = 0;
+int framesCompressed = 0;
+u32* compressedFrameSizeTable32 = NULL;
+u16* compressedFrameSizeTable16 = NULL;
 
 u8 headerToFile[0x200] = {0};
 
@@ -142,11 +147,11 @@ const char* framesFolder = "rvidFrames";
 	printf("Done!\n");
 }*/
 
-void convertFrame(int b, unsigned width, std::vector<unsigned char> image, bool alternatePixel) {
+void convertFrame(const int thread, const int b, const unsigned width, std::vector<unsigned char> image, bool alternatePixel) {
 	if (!rvidHeader.bmpMode) {
 		for (int i = 0; i < 256; i++) {
-			paletteSet[i] = false;
-			palette[i] = 0;
+			paletteSet[thread][i] = false;
+			palette[thread][i] = 0;
 		}
 	}
 
@@ -187,7 +192,7 @@ void convertFrame(int b, unsigned width, std::vector<unsigned char> image, bool 
 		}
 
 		if (rvidHeader.bmpMode) {
-			convertedFrame16[i] = color;
+			convertedFrame16[thread][i] = color;
 
 			x++;
 			if ((unsigned)x == width) {
@@ -198,69 +203,52 @@ void convertFrame(int b, unsigned width, std::vector<unsigned char> image, bool 
 		} else {
 			int p = 0;
 			for (p = 0; p < 256; p++) {
-				if (!paletteSet[p]) {
-					palette[p] = color;
-					paletteSet[p] = true;
+				if (!paletteSet[thread][p]) {
+					palette[thread][p] = color;
+					paletteSet[thread][p] = true;
 					break;
-				} else if (palette[p] == color) {
+				} else if (palette[thread][p] == color) {
 					break;
 				}
 			}
-			convertedFrame[i] = p;
+			convertedFrame[thread][i] = p;
 		}
 	}
 
 	if (rvidHeader.bmpMode) {
 		if (rvidHeader.interlaced) {
-			int f = bottomField[b] ? 1 : 0;
+			int f = bottomField[thread][b] ? 1 : 0;
 			int x = 0;
 			for(int i = 0; i < 256*rvidHeader.vRes; i++) {
-				halvedFrame16[i] = convertedFrame16[(256*f)+x];
+				halvedFrame16[thread][i] = convertedFrame16[thread][(256*f)+x];
 				x++;
 				if (x == 256) {
 					f += 2;
 					x = 0;
 				}
 			}
-			SHA1(convertedFrameSHA1, (char*)halvedFrame16, (256*rvidHeader.vRes)*2);
-			bottomField[b] = !bottomField[b];
-		} else {
-			SHA1(convertedFrameSHA1, (char*)convertedFrame16, (256*rvidHeader.vRes)*2);
+			bottomField[thread][b] = !bottomField[thread][b];
 		}
 	} else {
-		SHA1_CTX ctx;
-		unsigned int ii;
-		char* convertedFrameChar = (char*)palette;
-
-		SHA1Init(&ctx);
-		for (ii=0; ii<256*2; ii+=1)
-			SHA1Update(&ctx, (const unsigned char*)convertedFrameChar + ii, 1);
-
 		if (rvidHeader.interlaced) {
-			char* convertedFrameChar = (char*)halvedFrame;
-
-			int f = bottomField[b] ? 1 : 0;
+			int f = bottomField[thread][b] ? 1 : 0;
 			int x = 0;
 			for(int i = 0; i < 256*rvidHeader.vRes; i++) {
-				halvedFrame[i] = convertedFrame[(256*f)+x];
+				halvedFrame[thread][i] = convertedFrame[thread][(256*f)+x];
 				x++;
 				if (x == 256) {
 					f += 2;
 					x = 0;
 				}
 			}
-			for (ii=0; ii<256*rvidHeader.vRes; ii+=1)
-				SHA1Update(&ctx, (const unsigned char*)convertedFrameChar + ii, 1);
 
-			bottomField[b] = !bottomField[b];
-		} else {
-			char* convertedFrameChar = (char*)convertedFrame;
-
-			for (ii=0; ii<256*rvidHeader.vRes; ii+=1)
-				SHA1Update(&ctx, (const unsigned char*)convertedFrameChar + ii, 1);
+			bottomField[thread][b] = !bottomField[thread][b];
 		}
-		SHA1Final((unsigned char *)convertedFrameSHA1, &ctx);
 	}
+}
+
+static inline void getFrameChecksum(const u32 frameFileSize) {
+	SHA1(convertedFrameSHA1, (char*)convertedFrame16[0], frameFileSize);
 }
 
 int jobsDone = 0;
@@ -275,8 +263,6 @@ void applyRgb565Dither(const int firstFrame, const int lastFrame) {
 			unsigned width, height;
 			lodepng::decode(image, width, height, framePath);
 
-			// if ((b == 0) && ((i % 250) == 0 || i == foundFrames)) printf("\r%i/%i", i, foundFrames);
-			// fflush(stdout);
 			if (b == 0) convertedFrames++;
 
 			bool alternatePixel = !rvidHeader.interlaced && (i % 2);
@@ -315,6 +301,86 @@ void applyRgb565Dither(const int firstFrame, const int lastFrame) {
 				sprintf(framePath, "%s/bottom/frame%i.png", framesFolder, i);
 			}
 		}
+	}
+
+	jobsDone++;
+}
+
+void convertAndWriteFrames(FILE* tempFrames, const int thread, const int firstFrame, const int lastFrame, u32* frameOffsetTableWithDupes) {
+	char framePath[256];
+	int prevFrameSize = 0;
+	int i2 = 0;
+	for (int i = firstFrame; i < lastFrame; i++) {
+		sprintf(framePath, "%s/frame%i.png", framesFolder, i);
+		if (access(framePath, F_OK) != 0) break;
+		for (int b = 0; b < rvidHeader.dualScreen+1; b++) {
+			const int num = rvidHeader.dualScreen ? (i*2)+b : i;
+
+			std::vector<unsigned char> image;
+			unsigned width, height;
+			lodepng::decode(image, width, height, framePath);
+
+			if (b == 0) convertedFrames++;
+
+			convertFrame(thread, b, width, image, !rvidHeader.interlaced && (i % 2));
+
+			// Save current frame to temp file
+			if (!rvidHeader.bmpMode) {
+				fwrite(palette[thread], 2, 256, tempFrames);
+			}
+
+			int frameFileSize = 0;
+			if (framesCompressed) {
+				if (rvidHeader.bmpMode) {
+					if (rvidHeader.interlaced) {
+						compressedFrame[thread] = lzssCompress(&frameFileSize, (unsigned char*)halvedFrame16[thread], 0x200*rvidHeader.vRes);
+					} else {
+						compressedFrame[thread] = lzssCompress(&frameFileSize, (unsigned char*)convertedFrame16[thread], 0x200*rvidHeader.vRes);
+					}
+				} else {
+					if (rvidHeader.interlaced) {
+						compressedFrame[thread] = lzssCompress(&frameFileSize, (unsigned char*)halvedFrame[thread], 0x100*rvidHeader.vRes);
+					} else {
+						compressedFrame[thread] = lzssCompress(&frameFileSize, (unsigned char*)convertedFrame[thread], 0x100*rvidHeader.vRes);
+					}
+				}
+			}
+
+			if (!framesCompressed || (frameFileSize >= hRes*rvidHeader.vRes)) {
+				// Store uncompressed frame if compressed frame is exactly the same size or larger, or if compression is disabled
+				frameFileSize = hRes*rvidHeader.vRes;
+				if (rvidHeader.bmpMode) {
+					fwrite(rvidHeader.interlaced ? halvedFrame16[thread] : convertedFrame16[thread], 1, frameFileSize, tempFrames);
+				} else {
+					fwrite(rvidHeader.interlaced ? halvedFrame[thread] : convertedFrame[thread], 1, frameFileSize, tempFrames);
+				}
+			} else {
+				fwrite(compressedFrame[thread], 1, frameFileSize, tempFrames);
+			}
+
+			if (framesCompressed) {
+				if (rvidHeader.bmpMode) {
+					compressedFrameSizeTable32[num] = frameFileSize;
+				} else {
+					compressedFrameSizeTable16[num] = frameFileSize;
+				}
+				delete[] compressedFrame[thread];
+			}
+
+			const int num2 = rvidHeader.dualScreen ? (i2*2)+b : i2;
+			if (num2 > 0) {
+				frameOffsetTableWithDupes[num] = frameOffsetTableWithDupes[num-1] + prevFrameSize;
+			}
+			if (!rvidHeader.bmpMode) {
+				frameFileSize += 0x200;
+			}
+			prevFrameSize = frameFileSize;
+
+			if ((b == 0) && rvidHeader.dualScreen) {
+				sprintf(framePath, "%s/bottom/frame%i.png", framesFolder, i);
+			}
+		}
+		i2++;
 	}
 
 	jobsDone++;
@@ -387,6 +453,8 @@ int main(int argc, char **argv) {
 		if (access(framePath, F_OK) != 0) break;
 	}
 	foundFrames--;
+
+	const int foundFramesDivided = foundFrames/8;
 
 	if (foundFrames == -1) {
 		clear_screen();
@@ -651,7 +719,7 @@ int main(int argc, char **argv) {
 	if (rvidHeader.interlaced) {
 		fpsLimitForCompressionSupport *= 2;
 	}
-	int framesCompressed = 0;
+	framesCompressed = 0;
 	if (rvidHeader.fps <= fpsLimitForCompressionSupport) {
 		framesCompressed = info.GetInt("RVID", "COMPRESSED", 2);
 	}
@@ -689,7 +757,6 @@ int main(int argc, char **argv) {
 		selector = 1;
 		scanf("%d", &selector);
 		framesCompressed = !(selector == 0);
-
 
 		reviewInformation = true;
 		rvidCompressEntered = true;
@@ -1012,12 +1079,10 @@ int main(int argc, char **argv) {
 		sprintf(flagPath, "%s/dithered", framesFolder);
 		if (access(flagPath, F_OK) != 0) {
 			clear_screen();
+			printf("Applying RGB565 dithering...\n");
 			convertedFrames = -1;
 			jobsDone = 0;
-			printf("Applying RGB565 dithering...\n");
 			if (foundFrames >= 128) {
-				const int foundFramesDivided = foundFrames/8;
-
 				// Speed up process by running in 8 threads
 				std::thread t1(applyRgb565Dither, 0, foundFramesDivided);
 				std::thread t2(applyRgb565Dither, foundFramesDivided, foundFramesDivided*2);
@@ -1174,7 +1239,7 @@ int main(int argc, char **argv) {
 	}
 
 	const int foundFramesTotal = foundFrames*(rvidHeader.dualScreen+1);
-	const int hRes = rvidHeader.bmpMode ? 0x200 : 0x100;
+	hRes = rvidHeader.bmpMode ? 0x200 : 0x100;
 
 	u32* frameOffset_lru = new u32[foundFramesTotal+1];
 	memset(frameOffset_lru, 0xFF, (foundFramesTotal+1)*sizeof(u32));
@@ -1200,10 +1265,9 @@ int main(int argc, char **argv) {
 		}
 	}
 	u32* frameOffsetTable = new u32[frameOffsetTableSize/4];
+	u32* frameOffsetTableWithDupes = new u32[frameOffsetTableSize/4];
 	memset(frameOffsetTable, 0, frameOffsetTableSize);
-
-	u32* compressedFrameSizeTable32 = NULL;
-	u16* compressedFrameSizeTable16 = NULL;
+	memset(frameOffsetTableWithDupes, 0, frameOffsetTableSize);
 
 	clear_screen();
 	printf(framesCompressed ? "Converting and compressing...\n" : "Converting...\n");
@@ -1228,181 +1292,224 @@ int main(int argc, char **argv) {
 		}
 	}
 
+	FILE* tempFrames0 = fopen("tempFrames.0", "wb");
+	FILE* tempFrames1 = fopen("tempFrames.1", "wb");
+	FILE* tempFrames2 = fopen("tempFrames.2", "wb");
+	FILE* tempFrames3 = fopen("tempFrames.3", "wb");
+	FILE* tempFrames4 = fopen("tempFrames.4", "wb");
+	FILE* tempFrames5 = fopen("tempFrames.5", "wb");
+	FILE* tempFrames6 = fopen("tempFrames.6", "wb");
+	FILE* tempFrames7 = fopen("tempFrames.7", "wb");
+
+	convertedFrames = -1;
+	jobsDone = 0;
+	if (foundFrames >= 128) {
+		// Speed up process by running in 8 threads
+		std::thread t1(convertAndWriteFrames, tempFrames0, 0, 0, foundFramesDivided, frameOffsetTableWithDupes);
+		std::thread t2(convertAndWriteFrames, tempFrames1, 1, foundFramesDivided, foundFramesDivided*2, frameOffsetTableWithDupes);
+		std::thread t3(convertAndWriteFrames, tempFrames2, 2, foundFramesDivided*2, foundFramesDivided*3, frameOffsetTableWithDupes);
+		std::thread t4(convertAndWriteFrames, tempFrames3, 3, foundFramesDivided*3, foundFramesDivided*4, frameOffsetTableWithDupes);
+		std::thread t5(convertAndWriteFrames, tempFrames4, 4, foundFramesDivided*4, foundFramesDivided*5, frameOffsetTableWithDupes);
+		std::thread t6(convertAndWriteFrames, tempFrames5, 5, foundFramesDivided*5, foundFramesDivided*6, frameOffsetTableWithDupes);
+		std::thread t7(convertAndWriteFrames, tempFrames6, 6, foundFramesDivided*6, foundFramesDivided*7, frameOffsetTableWithDupes);
+		std::thread t8(convertAndWriteFrames, tempFrames7, 7, foundFramesDivided*7, foundFrames+1, frameOffsetTableWithDupes);
+
+		while (jobsDone < 8) {
+			if ((convertedFrames % 250) == 0) printf("\r%i/%i", convertedFrames, foundFrames);
+			fflush(stdout);
+		}
+		// Ensure all threads are done running
+		t1.join();
+		t2.join();
+		t3.join();
+		t4.join();
+		t5.join();
+		t6.join();
+		t7.join();
+		t8.join();
+
+		printf("\r%i/%i", convertedFrames, foundFrames);
+		fflush(stdout);
+	} else {
+		convertAndWriteFrames(tempFrames0, 0, 0, foundFrames+1, frameOffsetTableWithDupes);
+	}
+
+	fclose(tempFrames0);
+	fclose(tempFrames1);
+	fclose(tempFrames2);
+	fclose(tempFrames3);
+	fclose(tempFrames4);
+	fclose(tempFrames5);
+	fclose(tempFrames6);
+	fclose(tempFrames7);
+	printf("\n");
+
+	printf("Setting up frame offset table and checking for duplicates...");
+
 	FILE* tempFrames = fopen("tempFrames.bin", "wb");
 	for (int i = 0; i <= foundFrames; i++) {
-		sprintf(framePath, "%s/frame%i.png", framesFolder, i);
-		if (access(framePath, F_OK) == 0) {
-			for (int b = 0; b < rvidHeader.dualScreen+1; b++) {
-				const int num = rvidHeader.dualScreen ? (i*2)+b : i;
+		for (int b = 0; b < rvidHeader.dualScreen+1; b++) {
+			const int num = rvidHeader.dualScreen ? (i*2)+b : i;
 
-				std::vector<unsigned char> image;
-				unsigned width, height;
-				lodepng::decode(image, width, height, framePath);
+			int frameFileSize = hRes*rvidHeader.vRes;
+			if (framesCompressed) {
+				if (rvidHeader.bmpMode) {
+					frameFileSize = compressedFrameSizeTable32[num];
+				} else {
+					frameFileSize = compressedFrameSizeTable16[num];
+				}
+			}
+			if (!rvidHeader.bmpMode) {
+				frameFileSize += 0x200;
+			}
+			char writtenFramePath[16];
+			int writtenFrameNum = 0;
+			if (foundFrames >= 128) {
+				if (num >= 0 && num < foundFramesDivided) {
+					writtenFrameNum = 0;
+				} else if (num >= foundFramesDivided && num < foundFramesDivided*2) {
+					writtenFrameNum = 1;
+				} else if (num >= foundFramesDivided*2 && num < foundFramesDivided*3) {
+					writtenFrameNum = 2;
+				} else if (num >= foundFramesDivided*3 && num < foundFramesDivided*4) {
+					writtenFrameNum = 3;
+				} else if (num >= foundFramesDivided*4 && num < foundFramesDivided*5) {
+					writtenFrameNum = 4;
+				} else if (num >= foundFramesDivided*5 && num < foundFramesDivided*6) {
+					writtenFrameNum = 5;
+				} else if (num >= foundFramesDivided*6 && num < foundFramesDivided*7) {
+					writtenFrameNum = 6;
+				} else if (num >= foundFramesDivided*7 && num < foundFrames+1) {
+					writtenFrameNum = 7;
+				}
+			}
+			sprintf(writtenFramePath, "tempFrames.%i", writtenFrameNum);
+			FILE* writtenFrame = fopen(writtenFramePath, "rb");
+			fseek(writtenFrame, frameOffsetTableWithDupes[num], SEEK_SET);
+			fread(convertedFrame16[0], 1, frameFileSize, writtenFrame);
+			fclose(writtenFrame);
 
-				if ((b == 0) && ((i % 250) == 0 || i == foundFrames)) printf("\r%i/%i", i, foundFrames);
-				fflush(stdout);
+			getFrameChecksum(frameFileSize);
 
-				convertFrame(b, width, image, !rvidHeader.interlaced && (i % 2));
-
-				bool duplicateFrameFound = false;
-				int duplicateFrame = 0;
-				if (num > 0) {
-					/* if (rvidHeader.bmpMode) {
-						if (rvidHeader.interlaced) {
-							for (int i2 = 0; i2 < lruCachePos; i2++) {
-								duplicateFrameFound = memcmp(halvedFrame16, convertedFrame_lru[i2], 0x200*rvidHeader.vRes) == 0;
-								if (duplicateFrameFound) {
-									duplicateFrame = i2;
-									break;
-								}
-							}
-						} else {
-							for (int i2 = 0; i2 < lruCachePos; i2++) {
-								duplicateFrameFound = memcmp(convertedFrame16, convertedFrame_lru[i2], 0x200*rvidHeader.vRes) == 0;
-								if (duplicateFrameFound) {
-									duplicateFrame = i2;
-									break;
-								}
+			bool duplicateFrameFound = false;
+			int duplicateFrame = 0;
+			if (num > 0) {
+				/* if (rvidHeader.bmpMode) {
+					if (rvidHeader.interlaced) {
+						for (int i2 = 0; i2 < lruCachePos; i2++) {
+							duplicateFrameFound = memcmp(halvedFrame16, convertedFrame_lru[i2], 0x200*rvidHeader.vRes) == 0;
+							if (duplicateFrameFound) {
+								duplicateFrame = i2;
+								break;
 							}
 						}
 					} else {
 						for (int i2 = 0; i2 < lruCachePos; i2++) {
-							duplicateFrameFound = memcmp(palette, palette_lru[i2], 256*2) == 0;
+							duplicateFrameFound = memcmp(convertedFrame16, convertedFrame_lru[i2], 0x200*rvidHeader.vRes) == 0;
 							if (duplicateFrameFound) {
-								if (rvidHeader.interlaced) {
-									duplicateFrameFound = memcmp(halvedFrame, convertedFrame_lru[i2], 0x100*rvidHeader.vRes) == 0;
-								} else {
-									duplicateFrameFound = memcmp(convertedFrame, convertedFrame_lru[i2], 0x100*rvidHeader.vRes) == 0;
-								}
-								if (duplicateFrameFound) {
-									duplicateFrame = i2;
-									break;
-								}
+								duplicateFrame = i2;
+								break;
 							}
 						}
-					} */
+					}
+				} else {
 					for (int i2 = 0; i2 < lruCachePos; i2++) {
-						if (memcmp(convertedFramesSHA1[i2], convertedFrameSHA1, 20) == 0) {
-							duplicateFrameFound = true;
-							duplicateFrame = i2;
-							break;
+						duplicateFrameFound = memcmp(palette, palette_lru[i2], 256*2) == 0;
+						if (duplicateFrameFound) {
+							if (rvidHeader.interlaced) {
+								duplicateFrameFound = memcmp(halvedFrame, convertedFrame_lru[i2], 0x100*rvidHeader.vRes) == 0;
+							} else {
+								duplicateFrameFound = memcmp(convertedFrame, convertedFrame_lru[i2], 0x100*rvidHeader.vRes) == 0;
+							}
+							if (duplicateFrameFound) {
+								duplicateFrame = i2;
+								break;
+							}
 						}
 					}
+				} */
+				for (int i2 = 0; i2 < lruCachePos; i2++) {
+					if (memcmp(convertedFramesSHA1[i2], convertedFrameSHA1, 20) == 0) {
+						duplicateFrameFound = true;
+						duplicateFrame = i2;
+						break;
+					}
 				}
+			}
+
+			if (!duplicateFrameFound) {
+				/* if (rvidHeader.bmpMode) {
+					if (rvidHeader.interlaced) {
+						memcpy(convertedFrame_lru[lruCachePos], halvedFrame16, 0x200*rvidHeader.vRes);
+					} else {
+						memcpy(convertedFrame_lru[lruCachePos], convertedFrame16, 0x200*rvidHeader.vRes);
+					}
+				} else {
+					memcpy(palette_lru[lruCachePos], palette, 256*2);
+					if (rvidHeader.interlaced) {
+						memcpy(convertedFrame_lru[lruCachePos], halvedFrame, 0x100*rvidHeader.vRes);
+					} else {
+						memcpy(convertedFrame_lru[lruCachePos], convertedFrame, 0x100*rvidHeader.vRes);
+					}
+				} */
+				memcpy(convertedFramesSHA1[lruCachePos], convertedFrameSHA1, 20);
+
+				fwrite(convertedFrame16[0], 1, frameFileSize, tempFrames);
+			}
+
+			if (num == 0) {
+				frameOffsetTable[num] = 0x200+frameOffsetTableSize+compressedFrameSizeTableSize;
+				sizeCheck = frameOffsetTable[num];
+				sizeCheck += frameFileSize;
+			} else {
+				frameOffsetTable[num] = duplicateFrameFound ? frameOffset_lru[duplicateFrame] : frameOffset;
 
 				if (!duplicateFrameFound) {
-					/* if (rvidHeader.bmpMode) {
-						if (rvidHeader.interlaced) {
-							memcpy(convertedFrame_lru[lruCachePos], halvedFrame16, 0x200*rvidHeader.vRes);
-						} else {
-							memcpy(convertedFrame_lru[lruCachePos], convertedFrame16, 0x200*rvidHeader.vRes);
-						}
-					} else {
-						memcpy(palette_lru[lruCachePos], palette, 256*2);
-						if (rvidHeader.interlaced) {
-							memcpy(convertedFrame_lru[lruCachePos], halvedFrame, 0x100*rvidHeader.vRes);
-						} else {
-							memcpy(convertedFrame_lru[lruCachePos], convertedFrame, 0x100*rvidHeader.vRes);
-						}
-					} */
-					memcpy(convertedFramesSHA1[lruCachePos], convertedFrameSHA1, 20);
+					const u32 sizeIncrease = frameFileSize_lru[previousFrame];
 
-					// Save current frame to temp file
-					if (!rvidHeader.bmpMode) {
-						fwrite(palette, 2, 256, tempFrames);
-					}
-
-					if (framesCompressed) {
-						if (rvidHeader.bmpMode) {
-							if (rvidHeader.interlaced) {
-								compressedFrame = lzssCompress((unsigned char*)halvedFrame16, 0x200*rvidHeader.vRes);
-							} else {
-								compressedFrame = lzssCompress((unsigned char*)convertedFrame16, 0x200*rvidHeader.vRes);
-							}
-						} else {
-							if (rvidHeader.interlaced) {
-								compressedFrame = lzssCompress((unsigned char*)halvedFrame, 0x100*rvidHeader.vRes);
-							} else {
-								compressedFrame = lzssCompress((unsigned char*)convertedFrame, 0x100*rvidHeader.vRes);
-							}
-						}
-					}
-
-					if (!framesCompressed || (frameFileSize >= hRes*rvidHeader.vRes)) {
-						// Store uncompressed frame if compressed frame is exactly the same size or larger, or if compression is disabled
-						frameFileSize = hRes*rvidHeader.vRes;
-						if (rvidHeader.bmpMode) {
-							fwrite(rvidHeader.interlaced ? halvedFrame16 : convertedFrame16, 1, frameFileSize, tempFrames);
-						} else {
-							fwrite(rvidHeader.interlaced ? halvedFrame : convertedFrame, 1, frameFileSize, tempFrames);
-						}
-					} else {
-						fwrite(compressedFrame, 1, frameFileSize, tempFrames);
-					}
-				}
-
-				if (num == 0) {
-					frameOffsetTable[num] = 0x200+frameOffsetTableSize+compressedFrameSizeTableSize;
-					sizeCheck = frameOffsetTable[num];
-					if (!rvidHeader.bmpMode) {
-						sizeCheck += 0x200;
-					}
-					sizeCheck += frameFileSize;
-				} else {
-					frameOffsetTable[num] = duplicateFrameFound ? frameOffset_lru[duplicateFrame] : frameOffset;
-
-					if (!duplicateFrameFound) {
-						const u32 sizeIncrease = (rvidHeader.bmpMode ? 0 : 0x200) + frameFileSize_lru[previousFrame];
-
-						if (splitPointReached < 3) {
-							const u32 sizeIncreaseForCheck = (rvidHeader.bmpMode ? 0 : 0x200) + frameFileSize;
-							sizeCheck += sizeIncreaseForCheck;
-							if (sizeCheck >= 0xFFFFFFFF) {
-								splitPointReached++;
-								frameOffsetTable[num] = splitPointReached;
-								sizeCheck = sizeIncreaseForCheck;
-							} else {
-								frameOffsetTable[num] += sizeIncrease;
-							}
+					if (splitPointReached < 3) {
+						const u32 sizeIncreaseForCheck = frameFileSize;
+						sizeCheck += sizeIncreaseForCheck;
+						if (sizeCheck >= 0xFFFFFFFF) {
+							splitPointReached++;
+							frameOffsetTable[num] = splitPointReached;
+							sizeCheck = sizeIncreaseForCheck;
 						} else {
 							frameOffsetTable[num] += sizeIncrease;
 						}
-					}
-				}
-				if (framesCompressed) {
-					if (rvidHeader.bmpMode) {
-						compressedFrameSizeTable32[num] = duplicateFrameFound ? frameFileSize_lru[duplicateFrame] : frameFileSize;
 					} else {
-						compressedFrameSizeTable16[num] = duplicateFrameFound ? frameFileSize_lru[duplicateFrame] : frameFileSize;
+						frameOffsetTable[num] += sizeIncrease;
 					}
-				}
-				if (!duplicateFrameFound) {
-					frameOffset = frameOffsetTable[num];
-					frameOffset_lru[lruCachePos] = frameOffset;
-					frameFileSize_lru[lruCachePos] = frameFileSize;
-					previousFrame = lruCachePos;
-					lruCachePos++;
-					if (!rvidHeader.bmpMode) {
-						tempFramesSize += 0x200;
-					}
-					tempFramesSize += frameFileSize;
-					if (framesCompressed) {
-						delete[] compressedFrame;
-					}
-				}
-
-				if ((b == 0) && rvidHeader.dualScreen) {
-					sprintf(framePath, "%s/bottom/frame%i.png", framesFolder, i);
 				}
 			}
-		} else {
-			break;
+			if (!duplicateFrameFound) {
+				frameOffset = frameOffsetTable[num];
+				frameOffset_lru[lruCachePos] = frameOffset;
+				frameFileSize_lru[lruCachePos] = frameFileSize;
+				previousFrame = lruCachePos;
+				lruCachePos++;
+				tempFramesSize += frameFileSize;
+			}
+
+			if ((b == 0) && rvidHeader.dualScreen) {
+				sprintf(framePath, "%s/bottom/frame%i.png", framesFolder, i);
+			}
 		}
 	}
 	fclose(tempFrames);
-	printf("\n");
+	printf(" Done!\n");
+
+	remove("tempFrames.0");
+	remove("tempFrames.1");
+	remove("tempFrames.2");
+	remove("tempFrames.3");
+	remove("tempFrames.4");
+	remove("tempFrames.5");
+	remove("tempFrames.6");
+	remove("tempFrames.7");
 
 	// delete[] convertedFramesSHA1;
+	delete[] frameOffsetTableWithDupes;
 	const u64 totalSizeNoFrames = 0x200+frameOffsetTableSize+compressedFrameSizeTableSize;
 	const u64 totalSizeNoAudio = totalSizeNoFrames+tempFramesSize;
 	const u64 totalSize = totalSizeNoAudio+soundLeftSize+soundRightSize;
@@ -1471,7 +1578,7 @@ int main(int argc, char **argv) {
 	fwrite(frameOffsetTable, 1, frameOffsetTableSize, videoOutput[0]);
 	delete[] frameOffsetTable;
 
-	printf("Adding frames...\n");
+	printf("Adding frames...");
 
 	if (framesCompressed) {
 		if (rvidHeader.bmpMode) {
@@ -1486,7 +1593,7 @@ int main(int argc, char **argv) {
 	tempFrames = fopen("tempFrames.bin", "rb");
 	for (int i = 0; i < lruCachePos; i++) {
 		// Add frames to .rvid file
-		numr = fread(fileBuffer, 1, (rvidHeader.bmpMode ? 0 : 0x200) + frameFileSize_lru[i], tempFrames);
+		numr = fread(fileBuffer, 1, frameFileSize_lru[i], tempFrames);
 		/* if (numr == 0) {
 			printf("tempFrames.bin is not the expected size.\n");
 			printf("\n");
@@ -1508,6 +1615,7 @@ int main(int argc, char **argv) {
 		fwrite(fileBuffer, 1, numr, videoOutput[frameOffset_lru[i] % 4]);
 	}
 	fclose(tempFrames);
+	printf(" Done!\n");
 
 	delete[] frameOffset_lru;
 	delete[] frameFileSize_lru;
@@ -1521,7 +1629,7 @@ int main(int argc, char **argv) {
 	}
 
 	if (soundFound) {
-		printf("Adding sound...\n");
+		printf("Adding sound...");
 
 		u32 offset = 0;
 		int numr;
@@ -1568,7 +1676,8 @@ int main(int argc, char **argv) {
 
 	remove("tempFrames.bin");
 
-	printf("Done!\n");
+	printf(" Done!\n");
+	Sleep(1000);
 
 	return 0;
 }
