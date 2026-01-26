@@ -1665,6 +1665,8 @@ int main(int argc, char **argv) {
 			}
 			fclose(soundFile);
 		}
+
+		printf(" Done!\n");
 	}
 
 	for (int i = 0; i < splitPointReached+1; i++) {
@@ -1676,7 +1678,6 @@ int main(int argc, char **argv) {
 
 	remove("tempFrames.bin");
 
-	printf(" Done!\n");
 	Sleep(1000);
 
 	return 0;
