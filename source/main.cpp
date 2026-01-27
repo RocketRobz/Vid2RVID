@@ -75,7 +75,7 @@ u32 soundSize = 0;
 u64 sizeCheck = 0;
 
 int hRes = 0;
-int framesCompressed = 0;
+bool framesCompressed = false;
 u32* compressedFrameSizeTable32 = NULL;
 u16* compressedFrameSizeTable16 = NULL;
 
@@ -719,10 +719,11 @@ int main(int argc, char **argv) {
 	if (rvidHeader.interlaced) {
 		fpsLimitForCompressionSupport *= 2;
 	}
-	framesCompressed = 0;
+	/* framesCompressed = 0;
 	if (rvidHeader.fps <= fpsLimitForCompressionSupport) {
 		framesCompressed = info.GetInt("RVID", "COMPRESSED", 2);
-	}
+	} */
+	framesCompressed = (rvidHeader.fps <= fpsLimitForCompressionSupport);
 
 	if (rvidHeader.interlaced) {
 		rvidHeader.vRes /= 2;
@@ -743,7 +744,7 @@ int main(int argc, char **argv) {
 
 	} */
 
-	bool rvidCompressEntered = false;
+	/* bool rvidCompressEntered = false;
 
 	if (framesCompressed == 2) {
 		clear_screen();
@@ -760,7 +761,7 @@ int main(int argc, char **argv) {
 
 		reviewInformation = true;
 		rvidCompressEntered = true;
-	}
+	} */
 
 	bool rvidSoundEntered = false;
 	bool rvidAudioBitModeEntered = false;
@@ -910,11 +911,11 @@ int main(int argc, char **argv) {
 			}
 			printf(" FPS\n");
 		}
-		if (rvidCompressEntered) {
+		/* if (rvidCompressEntered) {
 			printf("- Compressed Frames: ");
 			printf(framesCompressed ? "Yes" : "No");
 			printf("\n");
-		}
+		} */
 		if (rvidSoundEntered || rvidAudioBitModeEntered) {
 			printf("- Audio Quality: %ihz, %i-bit", rvidHeader.sampleRate, (rvidHeader.audioBitMode == 1) ? 16 : 8);
 		}
@@ -938,9 +939,9 @@ int main(int argc, char **argv) {
 			info.SetInt("RVID", "FPS_REDUCE_BY_0.1", fpsReduceBy01);
 			info.SetInt("RVID", "FPS_DS_NATIVE", dsRefreshRate);
 		}
-		if (rvidCompressEntered) {
+		/* if (rvidCompressEntered) {
 			info.SetInt("RVID", "COMPRESSED", framesCompressed);
-		}
+		} */
 		if (rvidSoundEntered) {
 			info.SetInt("RVID", "AUDIO_HZ", rvidHeader.sampleRate);
 		}
