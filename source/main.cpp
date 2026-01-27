@@ -117,9 +117,9 @@ rvidHeaderInfo rvidHeader;
 const char* framesFolder = "rvidFrames";
 
 #ifdef _WIN32
-#define titleText "Vid2RVID v1.6\nby Rocket Robz\n"
+#define titleText "Vid2RVID v1.7\nby Rocket Robz\n"
 #else
-#define titleText "Vid2RVID v1.6\nby Rocket Robz\nLinux support by Paulo Mateus\n"
+#define titleText "Vid2RVID v1.7\nby Rocket Robz\nLinux support by Paulo Mateus\n"
 #endif
 
 /*void extractFrames(void) {
