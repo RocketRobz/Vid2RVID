@@ -704,7 +704,7 @@ int main(int argc, char **argv) {
 		fpsLimitForProgressiveScan /= 2;
 	}
 	rvidHeader.interlaced = (rvidHeader.fps > fpsLimitForProgressiveScan) ? 1 : 0;
-	int fpsLimitForCompressionSupport = 50;
+	int fpsLimitForCompressionSupport = 48;
 	if (rvidHeader.dualScreen) {
 		fpsLimitForCompressionSupport /= 2;
 	}
