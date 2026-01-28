@@ -704,7 +704,7 @@ int main(int argc, char **argv) {
 		fpsLimitForProgressiveScan /= 2;
 	}
 	rvidHeader.interlaced = (rvidHeader.fps > fpsLimitForProgressiveScan) ? 1 : 0;
-	int fpsLimitForCompressionSupport = 48;
+	int fpsLimitForCompressionSupport = 50;
 	if (rvidHeader.dualScreen) {
 		fpsLimitForCompressionSupport /= 2;
 	}
@@ -718,6 +718,9 @@ int main(int argc, char **argv) {
 	}
 	if (rvidHeader.interlaced) {
 		fpsLimitForCompressionSupport *= 2;
+	}
+	if (rvidHeader.vRes > lowHeightForDoubleFps && fpsLimitForCompressionSupport > 48) {
+		fpsLimitForCompressionSupport = 48;
 	}
 	/* framesCompressed = 0;
 	if (rvidHeader.fps <= fpsLimitForCompressionSupport) {
