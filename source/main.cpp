@@ -50,6 +50,11 @@ void wait_any_key() {
 }
 #endif
 
+#define isGba 0
+#define isNds 1
+
+int gameConsole = 2;
+
 static bool bottomField[8][2] = {{false}};
 static int splitPointReached = 0;
 static int previousFrame = 0;
@@ -148,14 +153,27 @@ const char* framesFolder = "rvidFrames";
 }*/
 
 void convertFrame(const int thread, const int b, const unsigned width, std::vector<unsigned char> image, bool alternatePixel) {
-	if (!rvidHeader.bmpMode) {
+	if (rvidHeader.bmpMode) {
+		memset(convertedFrame16[thread], 0, (256*192)*2);
+	} else {
 		for (int i = 0; i < 256; i++) {
 			paletteSet[thread][i] = false;
 			palette[thread][i] = 0;
 		}
+		memset(convertedFrame[thread], 0, 256*192);
 	}
 
+	const int screenWidth = (gameConsole == isGba) ? 240 : 256;
+
+	int xPos = 0;
+	if ((unsigned)width <= screenWidth-2) {
+		// Adjust video positioning
+		for (int i = (int)width; i < screenWidth; i += 2) {
+			xPos++;
+		}
+	}
 	int x = 0;
+	int y = 0;
 	for(unsigned i=0;i<image.size()/4;i++) {
 		if (rvidHeader.bmpMode && alternatePixel) {
 			if (image[(i*4)] >= 0x4 && image[(i*4)] < 0xFC) {
@@ -192,12 +210,13 @@ void convertFrame(const int thread, const int b, const unsigned width, std::vect
 		}
 
 		if (rvidHeader.bmpMode) {
-			convertedFrame16[thread][i] = color;
+			convertedFrame16[thread][(y * screenWidth) + xPos + x] = color;
 
 			x++;
 			if ((unsigned)x == width) {
 				alternatePixel = !alternatePixel;
 				x=0;
+				y++;
 			}
 			alternatePixel = !alternatePixel;
 		} else {
@@ -211,7 +230,13 @@ void convertFrame(const int thread, const int b, const unsigned width, std::vect
 					break;
 				}
 			}
-			convertedFrame[thread][i] = p;
+			convertedFrame[thread][(y * screenWidth) + xPos + x] = p;
+
+			x++;
+			if ((unsigned)x == width) {
+				x=0;
+				y++;
+			}
 		}
 	}
 
@@ -478,37 +503,61 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 
-	while (1) {
-		foundBottomFrames++;
-		sprintf(framePath, "%s/bottom/frame%i.png", framesFolder, foundBottomFrames);
-		if (access(framePath, F_OK) != 0) break;
-	}
-	foundBottomFrames--;
+	gameConsole = info.GetInt("RVID", "GAME_CONSOLE", gameConsole);
 
-	if (foundBottomFrames != -1) {
-		if (foundBottomFrames != foundFrames) {
-			clear_screen();
-			printf("The amount of top screen and bottom screen frames do not match.\n");
-			printf("Make sure they're the same amount.\n");
-			printf("\n");
-			#ifdef WIN32
-			printf("Press ESC to exit\n");
+	bool reviewInformation = false;
+	bool gameConsoleEntered = false;
 
-			while (1) {
-				if (GetKeyState(VK_ESCAPE) & 0x8000) {
-					break;
-				}
-				Sleep(10);
-			}
-			#else
-			printf("Press any key to exit\n");
-			wait_any_key();
-			#endif
-			return 0;
+	if (gameConsole == 2) {
+		clear_screen();
+		printf("Which game console is the video for?\n");
+		printf("1: GameBoy Advance\n");
+		printf("2: Nintendo DS, DSi, and 3DS/2DS\n");
+
+		selector = 0;
+
+		while (selector < 1 || selector > 2) {
+			scanf("%d", &selector);
 		}
-		rvidHeader.dualScreen = 1;
-	} else {
-		rvidHeader.dualScreen = 0;
+
+		gameConsole = selector-1;
+		reviewInformation = true;
+		gameConsoleEntered = true;
+	}
+
+	if (gameConsole == isNds) {
+		while (1) {
+			foundBottomFrames++;
+			sprintf(framePath, "%s/bottom/frame%i.png", framesFolder, foundBottomFrames);
+			if (access(framePath, F_OK) != 0) break;
+		}
+		foundBottomFrames--;
+
+		if (foundBottomFrames != -1) {
+			if (foundBottomFrames != foundFrames) {
+				clear_screen();
+				printf("The amount of top screen and bottom screen frames do not match.\n");
+				printf("Make sure they're the same amount.\n");
+				printf("\n");
+				#ifdef WIN32
+				printf("Press ESC to exit\n");
+
+				while (1) {
+					if (GetKeyState(VK_ESCAPE) & 0x8000) {
+						break;
+					}
+					Sleep(10);
+				}
+				#else
+				printf("Press any key to exit\n");
+				wait_any_key();
+				#endif
+				return 0;
+			}
+			rvidHeader.dualScreen = 1;
+		} else {
+			rvidHeader.dualScreen = 0;
+		}
 	}
 
 	rvidHeader.formatString = 0x44495652;	// "RVID"
@@ -526,14 +575,17 @@ int main(int argc, char **argv) {
 		std::vector<unsigned char> image;
 		unsigned width, height;
 		lodepng::decode(image, width, height, framePath);
-		widthDoubled = (width == 512);
+		if (gameConsole == isGba) {
+			widthDoubled = (width == 480);
+		} else {
+			widthDoubled = (width == 512);
+		}
 		rvidHeader.vRes = (u8)height;
 		if (widthDoubled) {
 			rvidHeader.vRes /= 2;
 		}
 	}
 
-	bool reviewInformation = false;
 	bool bmpModeEntered = false;
 
 	if (rvidHeader.bmpMode == 3) {
@@ -555,21 +607,24 @@ int main(int argc, char **argv) {
 		}
 		printf("- High quality\n");
 		printf("- Larger file size\n");
-		printf("- Does not support screen color filters\n");
-		printf("3: Unlimited (16 BPP, RGB565)\n");
-		if (rvidHeader.dualScreen) {
-			printf("- Frame Rate Limit: 30 FPS\n");
-			printf("- Frames will be interlaced if above 15 FPS\n");
-		} else {
-			printf("- Frames will be interlaced if above 30 FPS\n");
+		if (gameConsole == isNds) {
+			printf("- Does not support screen color filters\n");
+			printf("3: Unlimited (16 BPP, RGB565)\n");
+			if (rvidHeader.dualScreen) {
+				printf("- Frame Rate Limit: 30 FPS\n");
+				printf("- Frames will be interlaced if above 15 FPS\n");
+			} else {
+				printf("- Frames will be interlaced if above 30 FPS\n");
+			}
+			printf("- Max quality\n");
+			printf("- Larger file size\n");
+			printf("- Does not support screen color filters\n");
 		}
-		printf("- Max quality\n");
-		printf("- Larger file size\n");
-		printf("- Does not support screen color filters\n");
 
 		selector = 0;
+		const int selectorLimit = (gameConsole == isNds) ? 3 : 2;
 
-		while (selector < 1 || selector > 3) {
+		while (selector < 1 || selector > selectorLimit) {
 			scanf("%d", &selector);
 		}
 
@@ -600,7 +655,9 @@ int main(int argc, char **argv) {
 			printf("13: 59.826 FPS\n");
 			printf("14: 59.94  FPS\n");
 			printf("15: 60     FPS\n");
-			printf("16: 72     FPS\n");
+			if (gameConsole == isNds) {
+				printf("16: 72     FPS\n");
+			}
 		}
 
 		selector = 0;
@@ -685,7 +742,7 @@ int main(int argc, char **argv) {
 					fpsReduceBy01 = false;
 					break;
 				}
-				if (selector == 16) {
+				if (gameConsole == isNds && selector == 16) {
 					rvidHeader.fps = 72;
 					fpsReduceBy01 = false;
 					break;
@@ -696,7 +753,7 @@ int main(int argc, char **argv) {
 		rvidFpsEntered = true;
 	}
 
-	int fpsLimitForProgressiveScan = 72;
+	int fpsLimitForProgressiveScan = (gameConsole == isGba) ? 60 : 72;
 	if (rvidHeader.dualScreen) {
 		fpsLimitForProgressiveScan /= 2;
 	}
@@ -726,7 +783,7 @@ int main(int argc, char **argv) {
 	if (rvidHeader.fps <= fpsLimitForCompressionSupport) {
 		framesCompressed = info.GetInt("RVID", "COMPRESSED", 2);
 	} */
-	framesCompressed = (rvidHeader.fps <= fpsLimitForCompressionSupport);
+	framesCompressed = (gameConsole != isGba && rvidHeader.fps <= fpsLimitForCompressionSupport);
 
 	if (rvidHeader.interlaced) {
 		rvidHeader.vRes /= 2;
@@ -866,6 +923,18 @@ int main(int argc, char **argv) {
 	if (reviewInformation) {
 		clear_screen();
 		printf("Is the entered information correct?\n");
+		if (gameConsoleEntered) {
+			printf("- Game Console: ");
+			switch (gameConsole) {
+				case 0:
+					printf("GameBoy Advance");
+					break;
+				case 1:
+					printf("Nintendo DS, DSi, and 3DS/2DS");
+					break;
+			}
+			printf("\n");
+		}
 		if (bmpModeEntered) {
 			printf("- Color Amount: ");
 			switch (rvidHeader.bmpMode) {
@@ -934,6 +1003,9 @@ int main(int argc, char **argv) {
 		}
 
 
+		if (gameConsoleEntered) {
+			info.SetInt("RVID", "GAME_CONSOLE", gameConsole);
+		}
 		if (bmpModeEntered) {
 			info.SetInt("RVID", "BMP_MODE", rvidHeader.bmpMode);
 		}
@@ -954,6 +1026,30 @@ int main(int argc, char **argv) {
 		info.SaveIniFileModified(infoIniPath);
 	}
 
+	char gbaPath[256];
+	if (gameConsole == isGba) {
+		sprintf(gbaPath, "%s/rvid.gba", framesFolder);
+		if (access(gbaPath, F_OK) != 0) {
+			clear_screen();
+			printf("\"rvid.gba\" not found within the frames folder.\n");
+			printf("\n");
+			#ifdef WIN32
+			printf("Press ESC to exit\n");
+
+			while (1) {
+				if (GetKeyState(VK_ESCAPE) & 0x8000) {
+					break;
+				}
+				Sleep(10);
+			}
+			#else
+			printf("Press any key to exit\n");
+			wait_any_key();
+			#endif
+			return 0;
+		}
+	}
+
 	if (widthDoubled) {
 		char flagPath[256];
 		sprintf(flagPath, "%s/widthDoubled", framesFolder);
@@ -964,6 +1060,9 @@ int main(int argc, char **argv) {
 			const char* line2 = "@cd \"";
 			const char* line2End = "\"";
 			const char* line3 = "@magick mogrify -resize 256 *.png";
+			if (gameConsole == isGba) {
+				const char* line3 = "@magick mogrify -resize 240 *.png";
+			}
 			const char* line3_2 = "@cd bottom";
 			const char* line3_3 = "@cd..";
 			const char* line4 = "@mkdir widthDoubled";
@@ -1029,6 +1128,9 @@ int main(int argc, char **argv) {
 			const char* line2 = "cd \"";
 			const char* line2End = "\"";
 			const char* line3 = "magick mogrify -resize 256 *.png";
+			if (gameConsole == isGba) {
+				const char* line3 = "magick mogrify -resize 240 *.png";
+			}
 			const char* line3_2 = "cd bottom";
 			const char* line3_3 = "cd..";
 			const char* line4 = "mkdir widthDoubled";
@@ -1243,7 +1345,11 @@ int main(int argc, char **argv) {
 	}
 
 	const int foundFramesTotal = foundFrames*(rvidHeader.dualScreen+1);
-	hRes = rvidHeader.bmpMode ? 0x200 : 0x100;
+	if (gameConsole == isGba) {
+		hRes = rvidHeader.bmpMode ? 240*2 : 240;
+	} else {
+		hRes = rvidHeader.bmpMode ? 256*2 : 256;
+	}
 
 	u32* frameOffset_lru = new u32[foundFramesTotal+1];
 	memset(frameOffset_lru, 0xFF, (foundFramesTotal+1)*sizeof(u32));
@@ -1473,7 +1579,9 @@ int main(int argc, char **argv) {
 
 					const u32 sizeIncreaseForCheck = frameFileSize;
 					sizeCheck += sizeIncreaseForCheck;
-					if (sizeCheck >= 0xFFFFFFFF) {
+					if (gameConsole == isGba && sizeCheck >= (0x01FFE000-soundLeftSize-soundRightSize)) {
+						splitPointReached = 4;
+					} else if (sizeCheck >= 0xFFFFFFFF) {
 						splitPointReached++;
 						frameOffsetTable[num] = splitPointReached;
 						sizeCheck = sizeIncreaseForCheck;
@@ -1588,6 +1696,8 @@ int main(int argc, char **argv) {
 			}
 		}
 		audioOutput = fopen("output.rvidsnd", "wb");
+	} else if (gameConsole == isGba) {
+		videoOutput[0] = fopen("output.rvid.gba", "wb");
 	} else {
 		videoOutput[0] = fopen("output.rvid", "wb");
 	}
@@ -1614,6 +1724,14 @@ int main(int argc, char **argv) {
 		rvidHeader.fps = 0;
 	} else if (fpsReduceBy01) {
 		rvidHeader.fps += 0x80;
+	}
+
+	if (gameConsole == isGba) {
+		FILE* gba = fopen(gbaPath, "rb");
+		memset(fileBuffer, 0, 0x2000);
+		fread(fileBuffer, 1, 0x2000, gba);
+		fwrite(fileBuffer, 1, 0x2000, videoOutput[0]);
+		fclose(gba);
 	}
 
 	// Write header
