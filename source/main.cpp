@@ -847,6 +847,7 @@ int main(int argc, char **argv) {
 		}
 		rvidHeader.sampleRate = info.GetInt("RVID", "AUDIO_HZ", 0);
 		rvidHeader.audioBitMode = info.GetInt("RVID", "AUDIO_BIT_MODE", 2);
+		if (gameConsole == isGba && rvidHeader.audioBitMode == 1) rvidHeader.audioBitMode = 0;
 		if (rvidHeader.sampleRate == 0) {
 			clear_screen();
 			printf("What is the audio sample rate?\n");
@@ -889,7 +890,6 @@ int main(int argc, char **argv) {
 			}
 			reviewInformation = true;
 			rvidSoundEntered = true;
-
 		}
 		if (rvidHeader.audioBitMode == 2) {
 			if (gameConsole != isGba) {
