@@ -847,7 +847,6 @@ int main(int argc, char **argv) {
 		}
 		rvidHeader.sampleRate = info.GetInt("RVID", "AUDIO_HZ", 0);
 		rvidHeader.audioBitMode = info.GetInt("RVID", "AUDIO_BIT_MODE", 2);
-		if (gameConsole == isGba && rvidHeader.audioBitMode == 1) rvidHeader.audioBitMode = 0;
 		if (rvidHeader.sampleRate == 0) {
 			clear_screen();
 			printf("What is the audio sample rate?\n");
@@ -892,26 +891,26 @@ int main(int argc, char **argv) {
 			rvidSoundEntered = true;
 		}
 		if (rvidHeader.audioBitMode == 2) {
-			if (gameConsole != isGba) {
-				clear_screen();
-				printf("What is the encoding of the audio?\n");
-				printf("1: 8-bit\n");
-				printf("2: 16-bit\n");
+			clear_screen();
+			printf("What is the encoding of the audio?\n");
+			printf("1: 8-bit\n");
+			printf("2: 16-bit");
+			if (gameConsole == isGba) {
+				printf(" (Will downconvert to 8-bit)");
+			}
+			printf("\n");
 
-				while (1) {
-					scanf("%d", &selector);
+			while (1) {
+				scanf("%d", &selector);
 
-					if (selector == 1) {
-						rvidHeader.audioBitMode = 0;
-						break;
-					}
-					if (selector == 2) {
-						rvidHeader.audioBitMode = 1;
-						break;
-					}
+				if (selector == 1) {
+					rvidHeader.audioBitMode = 0;
+					break;
 				}
-			} else {
-				rvidHeader.audioBitMode = 0;
+				if (selector == 2) {
+					rvidHeader.audioBitMode = 1;
+					break;
+				}
 			}
 			reviewInformation = true;
 			rvidAudioBitModeEntered = true;
@@ -992,6 +991,9 @@ int main(int argc, char **argv) {
 		} */
 		if (rvidSoundEntered || rvidAudioBitModeEntered) {
 			printf("- Audio Quality: %ihz, %i-bit", rvidHeader.sampleRate, (rvidHeader.audioBitMode == 1) ? 16 : 8);
+			if (gameConsole == isGba && rvidHeader.audioBitMode == 1) {
+				printf(" (Will downconvert to 8-bit)");
+			}
 		}
 		printf("\n");
 		printf("1: Yes, save & proceed\n");
@@ -1058,6 +1060,9 @@ int main(int argc, char **argv) {
 			return 0;
 		}
 	}
+
+	const bool downconvertAudio = (gameConsole == isGba && rvidHeader.audioBitMode == 1);
+	if (downconvertAudio) rvidHeader.audioBitMode = 0;
 
 	if (widthDoubled) {
 		char flagPath[256];
@@ -1812,7 +1817,15 @@ int main(int argc, char **argv) {
 		{
 			// Add sound to .rvid file
 			numr = fread(fileBuffer, 1, sizeof(fileBuffer), soundFile);
-			fwrite(fileBuffer, 1, numr, audioOutput ? audioOutput : videoOutput[0]);
+			if (downconvertAudio) {
+				u16* fileBuffer16 = (u16*)fileBuffer;
+				for (int i = 0; i < sizeof(fileBuffer)/2; i++) {
+					fileBuffer[i] = fileBuffer16[i] / 0x100;
+				}
+				fwrite(fileBuffer, 1, numr/2, audioOutput ? audioOutput : videoOutput[0]);
+			} else {
+				fwrite(fileBuffer, 1, numr, audioOutput ? audioOutput : videoOutput[0]);
+			}
 			offset += sizeof(fileBuffer);
 
 			if (offset > soundLeftSize) {
