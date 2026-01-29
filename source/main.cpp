@@ -595,7 +595,9 @@ int main(int argc, char **argv) {
 			printf("- Frames will be interlaced if above 30 FPS\n");
 		}
 		printf("- Good quality\n");
-		printf("- Supports screen color filters\n");
+		if (gameConsole == isNds) {
+			printf("- Supports screen color filters\n");
+		}
 		printf("2: Unlimited (16 BPP, RGB555)\n");
 		if (rvidHeader.dualScreen) {
 			printf("- Frame Rate Limit: 30 FPS\n");
@@ -607,22 +609,23 @@ int main(int argc, char **argv) {
 		printf("- Larger file size\n");
 		if (gameConsole == isNds) {
 			printf("- Does not support screen color filters\n");
-			printf("3: Unlimited (16 BPP, RGB565)\n");
-			if (rvidHeader.dualScreen) {
-				printf("- Frame Rate Limit: 30 FPS\n");
-				printf("- Frames will be interlaced if above 15 FPS\n");
-			} else {
-				printf("- Frames will be interlaced if above 30 FPS\n");
-			}
-			printf("- Max quality\n");
-			printf("- Larger file size\n");
+		}
+		printf("3: Unlimited (16 BPP, RGB565)\n");
+		if (rvidHeader.dualScreen) {
+			printf("- Frame Rate Limit: 30 FPS\n");
+			printf("- Frames will be interlaced if above 15 FPS\n");
+		} else {
+			printf("- Frames will be interlaced if above 30 FPS\n");
+		}
+		printf("- Max quality\n");
+		printf("- Larger file size\n");
+		if (gameConsole == isNds) {
 			printf("- Does not support screen color filters\n");
 		}
 
 		selector = 0;
-		const int selectorLimit = (gameConsole == isNds) ? 3 : 2;
 
-		while (selector < 1 || selector > selectorLimit) {
+		while (selector < 1 || selector > 3) {
 			scanf("%d", &selector);
 		}
 
