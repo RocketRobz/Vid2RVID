@@ -1596,7 +1596,7 @@ int main(int argc, char **argv) {
 
 					const u32 sizeIncreaseForCheck = frameFileSize;
 					sizeCheck += sizeIncreaseForCheck;
-					if (gameConsole == isGba && sizeCheck >= (0x01FFE000-soundLeftSize-soundRightSize)) {
+					if (gameConsole == isGba && sizeCheck >= (0x01FFE000-soundLeftSize)) {
 						splitPointReached = 4;
 					} else if (sizeCheck >= 0xFFFFFFFF) {
 						splitPointReached++;
