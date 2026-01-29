@@ -214,7 +214,7 @@ void convertFrame(const int thread, const int b, const unsigned width, std::vect
 
 			x++;
 			if ((unsigned)x == width) {
-				alternatePixel = !alternatePixel;
+				if ((x % 2) == 0) alternatePixel = !alternatePixel;
 				x=0;
 				y++;
 			}
@@ -315,7 +315,7 @@ void applyRgb565Dither(const int firstFrame, const int lastFrame) {
 
 				x++;
 				if ((unsigned)x == width) {
-					alternatePixel = !alternatePixel;
+					if ((x % 2) == 0) alternatePixel = !alternatePixel;
 					x=0;
 				}
 				alternatePixel = !alternatePixel;
