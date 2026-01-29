@@ -18,8 +18,6 @@
 #include "sha1.h"
 #include "inifile.h"
 
-#define lowHeightForDoubleFps 108
-
 typedef uint64_t u64;
 typedef uint32_t u32;
 typedef uint16_t u16;
@@ -753,7 +751,7 @@ int main(int argc, char **argv) {
 		rvidFpsEntered = true;
 	}
 
-	int fpsLimitForProgressiveScan = (gameConsole == isGba) ? 60 : 72;
+	int fpsLimitForProgressiveScan = (gameConsole == isGba) ? 30 : 72;
 	if (rvidHeader.dualScreen) {
 		fpsLimitForProgressiveScan /= 2;
 	}
@@ -761,7 +759,8 @@ int main(int argc, char **argv) {
 		fpsLimitForProgressiveScan /= 2;
 	}
 	rvidHeader.interlaced = (rvidHeader.fps > fpsLimitForProgressiveScan) ? 1 : 0;
-	int fpsLimitForCompressionSupport = 50;
+	int fpsLimitForCompressionSupport = (gameConsole == isGba) ? 15 : 50;
+	int lowHeightForDoubleFps = (gameConsole == isGba) ? 100 : 108;
 	if (rvidHeader.dualScreen) {
 		fpsLimitForCompressionSupport /= 2;
 	}
@@ -770,7 +769,7 @@ int main(int argc, char **argv) {
 	}
 	if (rvidHeader.vRes <= lowHeightForDoubleFps) {
 		fpsLimitForCompressionSupport *= 2;
-	} else if (rvidHeader.bmpMode && rvidHeader.vRes > 144) {
+	} else if (gameConsole == isNds && rvidHeader.bmpMode && rvidHeader.vRes > 144) {
 		fpsLimitForCompressionSupport /= 2;
 	}
 	if (rvidHeader.interlaced) {
@@ -783,7 +782,7 @@ int main(int argc, char **argv) {
 	if (rvidHeader.fps <= fpsLimitForCompressionSupport) {
 		framesCompressed = info.GetInt("RVID", "COMPRESSED", 2);
 	} */
-	framesCompressed = (gameConsole != isGba && rvidHeader.fps <= fpsLimitForCompressionSupport);
+	framesCompressed = (rvidHeader.fps <= fpsLimitForCompressionSupport);
 
 	if (rvidHeader.interlaced) {
 		rvidHeader.vRes /= 2;
