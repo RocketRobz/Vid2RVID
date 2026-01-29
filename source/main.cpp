@@ -841,7 +841,7 @@ int main(int argc, char **argv) {
 	u32 soundRightSize = 0;
 	if (access(soundPath, F_OK) == 0) {
 		soundLeftSize = getFileSize(soundPath);
-		if (access(soundRightPath, F_OK) == 0) {
+		if (gameConsole != isGba && access(soundRightPath, F_OK) == 0) {
 			soundRightSize = getFileSize(soundRightPath);
 			soundRightFound = true;
 		}
