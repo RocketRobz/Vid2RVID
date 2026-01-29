@@ -892,22 +892,26 @@ int main(int argc, char **argv) {
 
 		}
 		if (rvidHeader.audioBitMode == 2) {
-			clear_screen();
-			printf("What is the encoding of the audio?\n");
-			printf("1: 8-bit\n");
-			if (gameConsole != isGba) printf("2: 16-bit\n");
+			if (gameConsole != isGba) {
+				clear_screen();
+				printf("What is the encoding of the audio?\n");
+				printf("1: 8-bit\n");
+				printf("2: 16-bit\n");
 
-			while (1) {
-				scanf("%d", &selector);
+				while (1) {
+					scanf("%d", &selector);
 
-				if (selector == 1) {
-					rvidHeader.audioBitMode = 0;
-					break;
+					if (selector == 1) {
+						rvidHeader.audioBitMode = 0;
+						break;
+					}
+					if (selector == 2) {
+						rvidHeader.audioBitMode = 1;
+						break;
+					}
 				}
-				if (gameConsole != isGba && selector == 2) {
-					rvidHeader.audioBitMode = 1;
-					break;
-				}
+			} else {
+				rvidHeader.audioBitMode = 0;
 			}
 			reviewInformation = true;
 			rvidAudioBitModeEntered = true;
