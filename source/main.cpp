@@ -242,10 +242,10 @@ void convertFrame(const int thread, const int b, const unsigned width, std::vect
 		if (rvidHeader.interlaced) {
 			int f = bottomField[thread][b] ? 1 : 0;
 			int x = 0;
-			for(int i = 0; i < 256*rvidHeader.vRes; i++) {
-				halvedFrame16[thread][i] = convertedFrame16[thread][(256*f)+x];
+			for(int i = 0; i < screenWidth*rvidHeader.vRes; i++) {
+				halvedFrame16[thread][i] = convertedFrame16[thread][(screenWidth*f)+x];
 				x++;
-				if (x == 256) {
+				if (x == screenWidth) {
 					f += 2;
 					x = 0;
 				}
@@ -256,10 +256,10 @@ void convertFrame(const int thread, const int b, const unsigned width, std::vect
 		if (rvidHeader.interlaced) {
 			int f = bottomField[thread][b] ? 1 : 0;
 			int x = 0;
-			for(int i = 0; i < 256*rvidHeader.vRes; i++) {
-				halvedFrame[thread][i] = convertedFrame[thread][(256*f)+x];
+			for(int i = 0; i < screenWidth*rvidHeader.vRes; i++) {
+				halvedFrame[thread][i] = convertedFrame[thread][(screenWidth*f)+x];
 				x++;
-				if (x == 256) {
+				if (x == screenWidth) {
 					f += 2;
 					x = 0;
 				}
