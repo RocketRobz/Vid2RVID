@@ -1027,10 +1027,17 @@ int main(int argc, char **argv) {
 
 	char gbaPath[256];
 	if (gameConsole == isGba) {
-		sprintf(gbaPath, "%s/rvid.gba", framesFolder);
+		char exePath[256] = {0};
+		for (int i = strlen(argv[0]); i >= 0; i--) {
+			if (argv[0][i] == '/' || argv[0][i] == '\\') {
+				memcpy(exePath, argv[0], i);
+				break;
+			}
+		}
+		sprintf(gbaPath, "%s/rvid.gba", exePath);
 		if (access(gbaPath, F_OK) != 0) {
 			clear_screen();
-			printf("\"rvid.gba\" not found within the frames folder.\n");
+			printf("\"rvid.gba\" not found in the same location as the .exe file.\n");
 			printf("\n");
 			#ifdef WIN32
 			printf("Press ESC to exit\n");
