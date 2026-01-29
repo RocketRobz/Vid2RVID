@@ -591,7 +591,7 @@ int main(int argc, char **argv) {
 		printf("Select the amount of colors to display on-screen.\n");
 		printf("(Dithering will be applied to look like more is on-screen.)\n\n");
 		printf("1: 256 (8 BPP, RGB565)\n");
-		if (rvidHeader.dualScreen) {
+		if (gameConsole == isGba || rvidHeader.dualScreen) {
 			printf("- Frames will be interlaced if above 30 FPS\n");
 		}
 		printf("- Good quality\n");
@@ -599,7 +599,7 @@ int main(int argc, char **argv) {
 			printf("- Supports screen color filters\n");
 		}
 		printf("2: Unlimited (16 BPP, RGB555)\n");
-		if (rvidHeader.dualScreen) {
+		if (gameConsole == isGba || rvidHeader.dualScreen) {
 			printf("- Frame Rate Limit: 30 FPS\n");
 			printf("- Frames will be interlaced if above 15 FPS\n");
 		} else {
@@ -611,7 +611,7 @@ int main(int argc, char **argv) {
 			printf("- Does not support screen color filters\n");
 		}
 		printf("3: Unlimited (16 BPP, RGB565)\n");
-		if (rvidHeader.dualScreen) {
+		if (gameConsole == isGba || rvidHeader.dualScreen) {
 			printf("- Frame Rate Limit: 30 FPS\n");
 			printf("- Frames will be interlaced if above 15 FPS\n");
 		} else {
@@ -649,7 +649,7 @@ int main(int argc, char **argv) {
 		printf("7: 25     FPS\n");
 		printf("8: 29.97  FPS\n");
 		printf("9: 30     FPS\n");
-		if (!rvidHeader.dualScreen || !rvidHeader.bmpMode) {
+		if ((gameConsole == isNds && !rvidHeader.dualScreen) || !rvidHeader.bmpMode) {
 			printf("10: 47.952 FPS\n");
 			printf("11: 48     FPS\n");
 			printf("12: 50     FPS\n");
