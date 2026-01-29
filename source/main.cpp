@@ -895,8 +895,7 @@ int main(int argc, char **argv) {
 			clear_screen();
 			printf("What is the encoding of the audio?\n");
 			printf("1: 8-bit\n");
-			printf("2: 16-bit\n");
-
+			if (gameConsole != isGba) printf("2: 16-bit\n");
 
 			while (1) {
 				scanf("%d", &selector);
@@ -905,7 +904,7 @@ int main(int argc, char **argv) {
 					rvidHeader.audioBitMode = 0;
 					break;
 				}
-				if (selector == 2) {
+				if (gameConsole != isGba && selector == 2) {
 					rvidHeader.audioBitMode = 1;
 					break;
 				}
