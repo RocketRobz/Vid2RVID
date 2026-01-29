@@ -649,7 +649,8 @@ int main(int argc, char **argv) {
 		printf("7: 25     FPS\n");
 		printf("8: 29.97  FPS\n");
 		printf("9: 30     FPS\n");
-		if ((gameConsole == isNds && !rvidHeader.dualScreen) || !rvidHeader.bmpMode) {
+		const bool hfrEnabled = ((gameConsole == isNds && !rvidHeader.dualScreen) || !rvidHeader.bmpMode);
+		if (hfrEnabled) {
 			printf("10: 47.952 FPS\n");
 			printf("11: 48     FPS\n");
 			printf("12: 50     FPS\n");
@@ -711,7 +712,7 @@ int main(int argc, char **argv) {
 				fpsReduceBy01 = false;
 				break;
 			}
-			if (!rvidHeader.dualScreen || !rvidHeader.bmpMode) {
+			if (hfrEnabled) {
 				if (selector == 10) {
 					rvidHeader.fps = 48;
 					fpsReduceBy01 = true; // 47.952
