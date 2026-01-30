@@ -1035,7 +1035,7 @@ int main(int argc, char **argv) {
 	}
 
 	char gbaPath[256];
-	u32 gbaSize = 1;
+	u32 gbaSize = 4;
 	if (gameConsole == isGba) {
 		char exePath[256] = {0};
 		for (int i = strlen(argv[0]); i >= 0; i--) {
