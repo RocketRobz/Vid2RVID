@@ -98,7 +98,7 @@ u32 getFileSize(const char *fileName)
 	return fsize;
 }
 
-#define rvidVer 4
+#define rvidVer 5
 
 typedef struct rvidHeaderInfo {
 	u32 formatString;  	    // "RVID" string
@@ -107,7 +107,7 @@ typedef struct rvidHeaderInfo {
 	u8 fps;				    // Frames per second
 	u8 vRes;			    // Vertical resolution
 	u8 interlaced;		    // Is interlaced
-	u8 dualScreen;		    // Is dual screen video
+	u8 dualScreen;		    // Is dual screen video, 2 = Video is for GBA
 	u16 sampleRate;			// Audio sample rate
 	u8 audioBitMode;		// 0 = 8-bit, 1 = 16-bit
 	u8 bmpMode;        		// 0 = 8 BPP (RGB565), 1 = 16 BPP (RGB555), 2 = 16 BPP (RGB565)
@@ -1750,6 +1750,8 @@ int main(int argc, char **argv) {
 		fread(fileBuffer, 1, 0x2000, gba);
 		fwrite(fileBuffer, 1, 0x2000, videoOutput[0]);
 		fclose(gba);
+
+		rvidHeader.dualScreen = 2;
 	}
 
 	// Write header
