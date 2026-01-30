@@ -1035,6 +1035,7 @@ int main(int argc, char **argv) {
 	}
 
 	char gbaPath[256];
+	u32 gbaSize = 1;
 	if (gameConsole == isGba) {
 		char exePath[256] = {0};
 		for (int i = strlen(argv[0]); i >= 0; i--) {
@@ -1044,7 +1045,13 @@ int main(int argc, char **argv) {
 			}
 		}
 		sprintf(gbaPath, "%s/rvid.gba", exePath);
-		if (access(gbaPath, F_OK) != 0) {
+		if (access(gbaPath, F_OK) == 0) {
+			const u32 gbaSizeNoPadding = getFileSize(gbaPath);
+			while (gbaSize < gbaSizeNoPadding) {
+				gbaSize *= 2;
+			}
+			if (gbaSize > 0x8000) gbaSize = 0x8000;
+		} else {
 			clear_screen();
 			printf("\"rvid.gba\" not found in the same location as the .exe file.\n");
 			printf("\n");
@@ -1597,7 +1604,7 @@ int main(int argc, char **argv) {
 
 					const u32 sizeIncreaseForCheck = frameFileSize;
 					sizeCheck += sizeIncreaseForCheck;
-					if (gameConsole == isGba && sizeCheck >= (0x01FFE000-soundLeftSize)) {
+					if (gameConsole == isGba && sizeCheck >= ((0x02000000-gbaSize)-soundLeftSize)) {
 						splitPointReached = 4;
 					} else if (sizeCheck >= 0xFFFFFFFF) {
 						splitPointReached++;
@@ -1746,9 +1753,9 @@ int main(int argc, char **argv) {
 
 	if (gameConsole == isGba) {
 		FILE* gba = fopen(gbaPath, "rb");
-		memset(fileBuffer, 0, 0x2000);
-		fread(fileBuffer, 1, 0x2000, gba);
-		fwrite(fileBuffer, 1, 0x2000, videoOutput[0]);
+		memset(fileBuffer, 0, gbaSize);
+		fread(fileBuffer, 1, gbaSize, gba);
+		fwrite(fileBuffer, 1, gbaSize, videoOutput[0]);
 		fclose(gba);
 
 		rvidHeader.dualScreen = 2;
