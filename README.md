@@ -23,10 +23,7 @@ Make sure you have the basic development software installed on your Windows or L
 
 ## Windows
 
-```
-cd pc
-compile.bat
-```
+Double-click on `compile.bat`
 
 ## Linux
 
