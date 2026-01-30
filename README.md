@@ -2,6 +2,7 @@
 Video to Rocket Video (`.rvid`) converter
 
 Requires [ImageMagick](https://imagemagick.org/) installed with
+
     - Windows: application directory added to system path
     - Linux: `magick` command available in PATH
 
