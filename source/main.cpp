@@ -1408,9 +1408,9 @@ int main(int argc, char **argv) {
 	}
 	u32* frameOffsetTable = new u32[frameOffsetTableSize/4];
 	u32* frameOffsetTableWithDupes[2] = {NULL};
-	frameOffsetTableWithDupes[0] = new u32[foundFramesTotal+1];
+	frameOffsetTableWithDupes[0] = new u32[foundFrames+1];
 	if (rvidHeader.dualScreen) {
-		frameOffsetTableWithDupes[1] = new u32[foundFramesTotal+1];
+		frameOffsetTableWithDupes[1] = new u32[foundFrames+1];
 	}
 	memset(frameOffsetTable, 0, frameOffsetTableSize);
 
