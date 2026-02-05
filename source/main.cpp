@@ -775,8 +775,13 @@ int main(int argc, char **argv) {
 	}
 	if (rvidHeader.vRes <= lowHeightForDoubleFps) {
 		fpsLimitForCompressionSupport *= 2;
-	} else if (gameConsole == isNds && rvidHeader.bmpMode && rvidHeader.vRes > 144) {
-		fpsLimitForCompressionSupport /= 2;
+	} else if (gameConsole == isNds && rvidHeader.vRes > 144) {
+		if (rvidHeader.dualScreen) {
+			fpsLimitForCompressionSupport /= 2;
+		}
+		if (rvidHeader.bmpMode) {
+			fpsLimitForCompressionSupport /= 2;
+		}
 	}
 	if (rvidHeader.interlaced) {
 		fpsLimitForCompressionSupport *= 2;
