@@ -119,10 +119,11 @@ typedef struct rvidHeaderInfo {
 rvidHeaderInfo rvidHeader;
 const char* framesFolder = "rvidFrames";
 
+#define titleText "Vid2RVID v1.7.1\n"
 #ifdef _WIN32
-#define titleText "Vid2RVID v1.7\nby Rocket Robz\n"
+#define authorText "by Rocket Robz\n"
 #else
-#define titleText "Vid2RVID v1.7\nby Rocket Robz\nLinux support by Paulo Mateus\n"
+#define authorText "by Rocket Robz\nLinux support by Paulo Mateus\n"
 #endif
 
 /*void extractFrames(void) {
@@ -414,7 +415,7 @@ int main(int argc, char **argv) {
 
 	int selector = 0;
 
-	printf(titleText);
+	printf(titleText authorText);
 	printf("\n");
 	printf("Path of video frames:\n\"");
 	if (argc >= 2) {
