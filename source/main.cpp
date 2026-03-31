@@ -119,7 +119,7 @@ typedef struct rvidHeaderInfo {
 rvidHeaderInfo rvidHeader;
 const char* framesFolder = "rvidFrames";
 
-#define titleText "Vid2RVID v1.7.1\n"
+#define titleText "Vid2RVID v1.7.2\n"
 #ifdef _WIN32
 #define authorText "by Rocket Robz\n"
 #else
@@ -1449,6 +1449,20 @@ int main(int argc, char **argv) {
 	convertedFrames = -1;
 	jobsDone = 0;
 	if (foundFrames >= 128) {
+		if (rvidHeader.interlaced) {
+			// Ensure interlaced fields are properly set
+			for (int b = 0; b < rvidHeader.dualScreen+1; b++) {
+				bottomField[0][b] = false;
+				bottomField[1][b] = (foundFramesDivided % 2) != 0;
+				bottomField[2][b] = ((foundFramesDivided*2) % 2) != 0;
+				bottomField[3][b] = ((foundFramesDivided*3) % 2) != 0;
+				bottomField[4][b] = ((foundFramesDivided*4) % 2) != 0;
+				bottomField[5][b] = ((foundFramesDivided*5) % 2) != 0;
+				bottomField[6][b] = ((foundFramesDivided*6) % 2) != 0;
+				bottomField[7][b] = ((foundFramesDivided*7) % 2) != 0;
+			}
+		}
+
 		// Speed up process by running in 8 threads
 		std::thread t1(convertAndWriteFrames, tempFrames[0][0], tempFrames[1][0], 0, 0, foundFramesDivided, frameOffsetTableWithDupes);
 		std::thread t2(convertAndWriteFrames, tempFrames[0][1], tempFrames[1][1], 1, foundFramesDivided, foundFramesDivided*2, frameOffsetTableWithDupes);
