@@ -119,7 +119,7 @@ typedef struct rvidHeaderInfo {
 rvidHeaderInfo rvidHeader;
 const char* framesFolder = "rvidFrames";
 
-#define titleText "Vid2RVID v1.7.2\n"
+#define titleText "Vid2RVID v1.7.3\n"
 #ifdef _WIN32
 #define authorText "by Rocket Robz\n"
 #else
@@ -162,6 +162,8 @@ void convertFrame(const int thread, const int b, const unsigned width, std::vect
 		memset(convertedFrame[thread], 0, 256*192);
 	}
 
+	bool alternatePixel2 = false;
+
 	const int screenWidth = (gameConsole == isGba) ? 240 : 256;
 
 	int xPos = 0;
@@ -174,30 +176,39 @@ void convertFrame(const int thread, const int b, const unsigned width, std::vect
 	int x = 0;
 	int y = 0;
 	for(unsigned i=0;i<image.size()/4;i++) {
-		if (rvidHeader.bmpMode && alternatePixel) {
-			if (image[(i*4)] >= 0x4 && image[(i*4)] < 0xFC) {
-				image[(i*4)] += 0x4;
-			}
-			if (rvidHeader.bmpMode == 2) {
-				if (image[(i*4)+1] >= 0x2 && image[(i*4)+1] < 0xFE) {
-					image[(i*4)+1] += 0x2;
+		const u8 oldR = image[(i*4)];
+		const u8 oldG = image[(i*4)+1];
+		const u8 oldB = image[(i*4)+2];
+		u8 newR = oldR;
+		u8 newG = oldG;
+		u8 newB = oldB;
+		if (rvidHeader.bmpMode) {
+			if (alternatePixel) {
+				if (oldR >= 4 && oldR < 0xFC) newR += 4;
+				if (rvidHeader.bmpMode == 2) {
+					if (oldG >= 2 && oldG < 0xFE) newG += 2;
+				} else {
+					if (oldG >= 4 && oldG < 0xFC) newG += 4;
 				}
-			} else {
-				if (image[(i*4)+1] >= 0x4 && image[(i*4)+1] < 0xFC) {
-					image[(i*4)+1] += 0x4;
-				}
+				if (oldB >= 4 && oldB < 0xFC) newB += 4;
 			}
-			if (image[(i*4)+2] >= 0x4 && image[(i*4)+2] < 0xFC) {
-				image[(i*4)+2] += 0x4;
+			if (alternatePixel2 && rvidHeader.fps >= 48 && !rvidHeader.interlaced) {
+				if (((oldR/2) % 2) == 1 && newR < 0xFE) newR += 2;
+				if (rvidHeader.bmpMode == 2) {
+					if ((oldG % 2) == 1 && newG < 0xFF) newG++;
+				} else {
+					if (((oldG/2) % 2) == 1 && newG < 0xFE) newG += 2;
+				}
+				if (((oldB/2) % 2) == 1 && newB < 0xFE) newB += 2;
 			}
 		}
 
 		u16 color = 0;
 		if (rvidHeader.bmpMode == 1) {
-			color = image[i*4]>>3 | (image[(i*4)+1]>>3)<<5 | (image[(i*4)+2]>>3)<<10 | BIT(15);
+			color = newR>>3 | (newG>>3)<<5 | (newB>>3)<<10 | BIT(15);
 		} else {
-			const u16 green = (image[(i*4)+1] >> 2) << 5;
-			color = image[i*4] >> 3 | (image[(i*4)+2] >> 3) << 10;
+			const u16 green = (newG >> 2) << 5;
+			color = newR >> 3 | (newB >> 3) << 10;
 			if (green & BIT(5)) {
 				color |= BIT(15);
 			}
@@ -213,11 +224,15 @@ void convertFrame(const int thread, const int b, const unsigned width, std::vect
 
 			x++;
 			if ((unsigned)x == width) {
-				if ((x % 2) == 0) alternatePixel = !alternatePixel;
+				if ((x % 2) == 0) {
+					alternatePixel = !alternatePixel;
+					alternatePixel2 = !alternatePixel2;
+				}
 				x=0;
 				y++;
 			}
 			alternatePixel = !alternatePixel;
+			alternatePixel2 = !alternatePixel2;
 		} else {
 			int p = 0;
 			for (p = 0; p < 256; p++) {
@@ -278,6 +293,7 @@ static inline void getFrameChecksum(const u32 frameFileSize) {
 int jobsDone = 0;
 
 void applyRgb565Dither(const int firstFrame, const int lastFrame) {
+	bool alternatePixel2 = false;
 	char framePath[256];
 	for (int i = firstFrame; i < lastFrame; i++) {
 		sprintf(framePath, "%s/frame%i.png", framesFolder, i);
@@ -292,21 +308,26 @@ void applyRgb565Dither(const int firstFrame, const int lastFrame) {
 			bool alternatePixel = !rvidHeader.interlaced && (i % 2);
 			int x = 0;
 			for(unsigned i=0;i<image.size();i+=4) {
+				const u8 oldR = image[i];
+				const u8 oldG = image[i+1];
+				const u8 oldB = image[i+2];
+				u8 newR = oldR;
+				u8 newG = oldG;
+				u8 newB = oldB;
 				if (alternatePixel) {
-					if (image[i] >= 0x4 && image[i] < 0xFC) {
-						image[i] += 0x4;
-					}
-					if (image[i+1] >= 0x2 && image[i+1] < 0xFE) {
-						image[i+1] += 0x2;
-					}
-					if (image[i+2] >= 0x4 && image[i+2] < 0xFC) {
-						image[i+2] += 0x4;
-					}
+					if (oldR >= 4 && oldR < 0xFC) newR += 4;
+					if (oldG >= 2 && oldG < 0xFE) newG += 2;
+					if (oldB >= 4 && oldB < 0xFC) newB += 4;
+				}
+				if (alternatePixel2 && rvidHeader.fps >= 48 && !rvidHeader.interlaced) {
+					if (((oldR/2) % 2) == 1 && newR < 0xFE) newR += 2;
+					if ((oldG % 2) == 1 && newG < 0xFF) newG++;
+					if (((oldB/2) % 2) == 1 && newB < 0xFE) newB += 2;
 				}
 
-				const u8 r = image[i] >> 3;
-				const u8 g = image[i+1] >> 2;
-				const u8 b = image[i+2] >> 3;
+				const u8 r = newR >> 3;
+				const u8 g = newG >> 2;
+				const u8 b = newB >> 3;
 
 				image[i] = (r * 255) / 31;
 				image[i+1] = (g * 255) / 63;
@@ -314,10 +335,14 @@ void applyRgb565Dither(const int firstFrame, const int lastFrame) {
 
 				x++;
 				if ((unsigned)x == width) {
-					if ((x % 2) == 0) alternatePixel = !alternatePixel;
+					if ((x % 2) == 0) {
+						alternatePixel = !alternatePixel;
+						alternatePixel2 = !alternatePixel2;
+					}
 					x=0;
 				}
 				alternatePixel = !alternatePixel;
+				alternatePixel2 = !alternatePixel2;
 			}
 			lodepng::encode(framePath, image, width, height);
 
