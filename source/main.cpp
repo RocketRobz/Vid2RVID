@@ -193,13 +193,13 @@ void convertFrame(const int thread, const int b, const unsigned width, std::vect
 				if (oldB >= 4 && oldB < 0xFC) newB += 4;
 			}
 			if (alternatePixel2 && rvidHeader.fps >= 48 && !rvidHeader.interlaced) {
-				if (((oldR/2) % 2) == 1 && newR < 0xFE) newR += 2;
+				if (oldR >= 2 && newR < 0xFE) newR += 2;
 				if (rvidHeader.bmpMode == 2) {
-					if ((oldG % 2) == 1 && newG < 0xFF) newG++;
+					if (oldG >= 1 && newG < 0xFF) newG++;
 				} else {
-					if (((oldG/2) % 2) == 1 && newG < 0xFE) newG += 2;
+					if (oldG >= 2 && newG < 0xFE) newG += 2;
 				}
-				if (((oldB/2) % 2) == 1 && newB < 0xFE) newB += 2;
+				if (oldB >= 2 && newB < 0xFE) newB += 2;
 			}
 		}
 
@@ -320,9 +320,9 @@ void applyRgb565Dither(const int firstFrame, const int lastFrame) {
 					if (oldB >= 4 && oldB < 0xFC) newB += 4;
 				}
 				if (alternatePixel2 && rvidHeader.fps >= 48 && !rvidHeader.interlaced) {
-					if (((oldR/2) % 2) == 1 && newR < 0xFE) newR += 2;
-					if ((oldG % 2) == 1 && newG < 0xFF) newG++;
-					if (((oldB/2) % 2) == 1 && newB < 0xFE) newB += 2;
+					if (oldR >= 2 && newR < 0xFE) newR += 2;
+					if (oldG >= 1 && newG < 0xFF) newG++;
+					if (oldB >= 2 && newB < 0xFE) newB += 2;
 				}
 
 				const u8 r = newR >> 3;
