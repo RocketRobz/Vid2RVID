@@ -11,6 +11,8 @@
 #include <thread>
 #ifdef _WIN32
 #include <Windows.h>
+#else
+#define Sleep(ms) usleep((ms) * 1000)
 #endif
 
 #include "graphics/lodepng.h"
@@ -205,7 +207,10 @@ void convertFrame(const int thread, const int b, const unsigned width, std::vect
 
 		u16 color = 0;
 		if (rvidHeader.bmpMode == 1) {
-			color = newR>>3 | (newG>>3)<<5 | (newB>>3)<<10 | BIT(15);
+			// Bit 15 is the alpha bit: leave it clear for transparent PNG pixels, so the
+			// player can show what is behind the video there.
+			const bool opaque = (image[(i*4)+3] >= 0x80);
+			color = newR>>3 | (newG>>3)<<5 | (newB>>3)<<10 | (opaque ? BIT(15) : 0);
 		} else {
 			const u16 green = (newG >> 2) << 5;
 			color = newR >> 3 | (newB >> 3) << 10;
