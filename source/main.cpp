@@ -11,6 +11,8 @@
 #include <thread>
 #ifdef _WIN32
 #include <Windows.h>
+#else
+#define Sleep(ms) usleep((ms) * 1000)
 #endif
 
 #include "graphics/lodepng.h"
@@ -44,7 +46,14 @@ void clear_screen() {
 
 #ifndef _WIN32
 void wait_any_key() {
-	while ( getchar() != '\n' );
+	int c;
+	while ((c = getchar()) != '\n') {
+		if (c == EOF) {
+			// No more input available, exit instead of looping forever
+			printf("\nNo input available, exiting.\n");
+			exit(1);
+		}
+	}
 }
 #endif
 
@@ -205,7 +214,10 @@ void convertFrame(const int thread, const int b, const unsigned width, std::vect
 
 		u16 color = 0;
 		if (rvidHeader.bmpMode == 1) {
-			color = newR>>3 | (newG>>3)<<5 | (newB>>3)<<10 | BIT(15);
+			// Bit 15 is the alpha bit: leave it clear for transparent PNG pixels, so the
+			// player can show what is behind the video there.
+			const bool opaque = (image[(i*4)+3] >= 0x80);
+			color = newR>>3 | (newG>>3)<<5 | (newB>>3)<<10 | (opaque ? BIT(15) : 0);
 		} else {
 			const u16 green = (newG >> 2) << 5;
 			color = newR >> 3 | (newB >> 3) << 10;
@@ -1116,10 +1128,7 @@ int main(int argc, char **argv) {
 			const char* line1 = "@echo Resizing frames, this may take a while...";
 			const char* line2 = "@cd \"";
 			const char* line2End = "\"";
-			const char* line3 = "@magick mogrify -resize 256 *.png";
-			if (gameConsole == isGba) {
-				const char* line3 = "@magick mogrify -resize 240 *.png";
-			}
+			const char* line3 = (gameConsole == isGba) ? "@magick mogrify -resize 240 *.png" : "@magick mogrify -resize 256 *.png";
 			const char* line3_2 = "@cd bottom";
 			const char* line3_3 = "@cd..";
 			const char* line4 = "@mkdir widthDoubled";
@@ -1181,20 +1190,20 @@ int main(int argc, char **argv) {
 		#else
 		if (access(flagPath, F_OK) != 0) {
 			const char* newLine = "\n";
+			const char* line0 = "#!/bin/bash";
 			const char* line1 = "echo Resizing frames, this may take a while...";
 			const char* line2 = "cd \"";
 			const char* line2End = "\"";
-			const char* line3 = "magick mogrify -resize 256 *.png";
-			if (gameConsole == isGba) {
-				const char* line3 = "magick mogrify -resize 240 *.png";
-			}
+			const char* line3 = (gameConsole == isGba) ? "magick mogrify -resize 240 *.png" : "magick mogrify -resize 256 *.png";
 			const char* line3_2 = "cd bottom";
-			const char* line3_3 = "cd..";
+			const char* line3_3 = "cd ..";
 			const char* line4 = "mkdir widthDoubled";
 			const char* line5 = "echo Done!";
 			const char* line6 = "read -n1 -p \"Press enter to continue...\"";
 
-			FILE* batFile = fopen("Process Frames.sh", "wb");
+			FILE* batFile = fopen("ProcessFrames.sh", "wb");
+			fwrite(line0, 1, strlen(line0), batFile);
+			fwrite(newLine, 1, 1, batFile);
 			fwrite(line1, 1, strlen(line1), batFile);
 			fwrite(newLine, 1, 1, batFile);
 			fwrite(line2, 1, strlen(line2), batFile);
@@ -1225,15 +1234,15 @@ int main(int argc, char **argv) {
 		while (access(flagPath, F_OK) != 0) {
 			clear_screen();
 			printf("Ensure ImageMagick is installed (and 'magick' command is working),\n");
-			printf("then open \"Process Frames.sh\".\n\n");
+			printf("then run: bash ProcessFrames.sh\n\n");
 			printf("When the processing is done, press any key to continue...\n");
 			wait_any_key();
 		}
 
 		remove(flagPath);
 
-		if (access("Process Frames.sh", F_OK) == 0) {
-			remove("Process Frames.sh");
+		if (access("ProcessFrames.sh", F_OK) == 0) {
+			remove("ProcessFrames.sh");
 		}
 		#endif
 	}
@@ -1347,19 +1356,22 @@ int main(int argc, char **argv) {
 		}
 		#else
 		if (access(flagPath, F_OK) != 0) {
-			if (access("Process Frames.sh", F_OK) != 0) {
+			if (access("ProcessFrames.sh", F_OK) != 0) {
 				const char* newLine = "\n";
+				const char* line0 = "#!/bin/bash";
 				const char* line1 = "echo Reducing color amount in each frame, this may take a while...";
 				const char* line2 = "cd \"";
 				const char* line2End = "\"";
 				const char* line3 = "magick mogrify -colors 256 *.png";
 				const char* line3_2 = "cd bottom";
-				const char* line3_3 = "cd..";
+				const char* line3_3 = "cd ..";
 				const char* line4 = "mkdir 256colors";
 				const char* line5 = "echo Done!";
 				const char* line6 = "read -n1 -p \"Press enter to continue...\"";
 
-				FILE* batFile = fopen("Process Frames.sh", "wb");
+				FILE* batFile = fopen("ProcessFrames.sh", "wb");
+				fwrite(line0, 1, strlen(line0), batFile);
+				fwrite(newLine, 1, 1, batFile);
 				fwrite(line1, 1, strlen(line1), batFile);
 				fwrite(newLine, 1, 1, batFile);
 				fwrite(line2, 1, strlen(line2), batFile);
@@ -1389,19 +1401,19 @@ int main(int argc, char **argv) {
 			while (access(flagPath, F_OK) != 0) {
 				clear_screen();
 				printf("Ensure ImageMagick is installed (and 'magick' command is working),\n");
-				printf("then open \"Process Frames.sh\".\n\n");
+				printf("then run: bash ProcessFrames.sh\n\n");
 				printf("When the processing is done, press any key to continue...\n");
 				wait_any_key();
 			}
 		}
 
-		if (access("Process Frames.sh", F_OK) == 0) {
-			remove("Process Frames.sh");
+		if (access("ProcessFrames.sh", F_OK) == 0) {
+			remove("ProcessFrames.sh");
 		}
 		#endif
 	}
 
-	const int foundFramesTotal = foundFrames*(rvidHeader.dualScreen+1);
+	const int foundFramesTotal = ((foundFrames+1)*(rvidHeader.dualScreen+1))-1; // Index of last frame (top+bottom)
 	if (gameConsole == isGba) {
 		hRes = rvidHeader.bmpMode ? 240*2 : 240;
 	} else {
@@ -1465,7 +1477,7 @@ int main(int argc, char **argv) {
 	FILE* tempFrames[2][8] = {{NULL}};
 	for (int i = 0; i < 8; i++) {
 		for (int b = 0; b < rvidHeader.dualScreen+1; b++) {
-			char tempFramesPath[16];
+			char tempFramesPath[32];
 			sprintf(tempFramesPath, (b == 1) ? "tempBottomFrames.%i" : "tempFrames.%i", i);
 			tempFrames[b][i] = fopen(tempFramesPath, "wb");
 		}
@@ -1543,7 +1555,7 @@ int main(int argc, char **argv) {
 			if (!rvidHeader.bmpMode) {
 				frameFileSize += 0x200;
 			}
-			char writtenFramePath[16];
+			char writtenFramePath[32];
 			int writtenFrameNum = 0;
 			if (foundFrames >= 128) {
 				if (i >= 0 && i < foundFramesDivided) {
@@ -1666,7 +1678,7 @@ int main(int argc, char **argv) {
 
 						for (int i2 = 0; i2 < 8; i++) {
 							for (int b2 = 0; b2 < rvidHeader.dualScreen+1; b2++) {
-								char tempFramesPath[16];
+								char tempFramesPath[32];
 								sprintf(tempFramesPath, (b2 == 1) ? "tempBottomFrames.%i" : "tempFrames.%i", i);
 								remove(tempFramesPath);
 							}
@@ -1723,7 +1735,7 @@ int main(int argc, char **argv) {
 
 	for (int i = 0; i < 8; i++) {
 		for (int b = 0; b < rvidHeader.dualScreen+1; b++) {
-			char tempFramesPath[16];
+			char tempFramesPath[32];
 			sprintf(tempFramesPath, (b == 1) ? "tempBottomFrames.%i" : "tempFrames.%i", i);
 			remove(tempFramesPath);
 		}
