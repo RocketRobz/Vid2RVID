@@ -128,7 +128,7 @@ typedef struct rvidHeaderInfo {
 rvidHeaderInfo rvidHeader;
 const char* framesFolder = "rvidFrames";
 
-#define titleText "Vid2RVID v1.7.3\n"
+#define titleText "Vid2RVID v1.8\n"
 #ifdef _WIN32
 #define authorText "by Rocket Robz\n"
 #else
